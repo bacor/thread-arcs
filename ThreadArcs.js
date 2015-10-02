@@ -26,9 +26,6 @@ var ThreadArcs = function(container, nodes, connList, options)  {
 	    this.connList 	 = connList
 		this.points		 = []
 		this.arcs		 = []
-		this.defaultNode = {
-		 	//...
-		}
 				
 		this.N 				= nodes.length
 		this.space			= (options['space'] || 40)
@@ -172,20 +169,6 @@ ThreadArcs.prototype.drawArc = function(A, B, dir) {
 	return arc
 }
 
-/**
- * Draws all arcs from a given point
- */
-ThreadArcs.prototype.drawArcsFromPoint = function(i, dir) {
-		this.arcs[i] || (this.arcs[i] = [])
-		
-		for(j = 0; j < this.connList[i].length; j++) {		
-			if(!this.arcs[i][j]) {
-				A = this.points[i]
-				B = this.points[this.connList[i][j]]
-				this.drawArc(A, B, dir)
-			}
-		}
-}
 
 /** 
  * Draws the entire ThreadArcs thing
@@ -196,17 +179,14 @@ ThreadArcs.prototype.draw = function() {
 	for( i = 0; i < this.N; i++ ){
 		this.drawPoint(this.padding + i * this.space, this.nodes[i])
 	}
-		
-	// Draw all arcs
-	dir = 1
+
+	// Draw all arcs	
 	for( i = 0; i < this.N; i++ ) {
-		this.drawArcsFromPoint(i, dir)
-		
-		dir *= -1
-		for( j = 0; j < this.connList[i].length; j++ ){
-			this.drawArcsFromPoint(this.connList[i][j], dir)
+		for(j = 0; j < this.connList[i].length; j++) {
+			A = this.points[i]
+			B = this.points[Math.abs(this.connList[i][j])]
+			this.drawArc(A, B, Math.sign(this.connList[i][j]))
 		}
-		dir *= -1
 	}
 	
 	// Move all points to the front
