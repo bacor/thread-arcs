@@ -1,0 +1,45 @@
+svg {
+	margin: 5px;
+}
+
+.point {
+	fill: rgba(136, 102, 114, .3);
+	stroke: rgb(255, 246, 238);
+	stroke-width: 5px;
+	
+	transition: fill 150ms ease-in;
+}
+
+.point:hover,
+.point.hover,
+.point:active {
+	fill: rgba(136, 102, 114, 1);
+}
+
+.point.active {
+	opacity: 1;
+	fill: #00a19a;
+}
+
+.arc {
+	stroke: rgba(136, 102, 114, .3);
+	stroke-width: 1px;
+	fill: transparent;
+	
+	transition: stroke 150ms ease-in;
+	transition: stroke-width 150ms ease-in;
+}
+
+.arc.hover {
+	stroke-width: 2px;
+	stroke: rgba(136, 102, 114, 1);
+}
+
+.arc.active {
+	stroke:#00a19a;
+	stroke-width: 1px;
+	opacity: 1;
+}
+.arc.active.hover {
+	stroke-width: 2px; 
+}

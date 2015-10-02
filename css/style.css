@@ -1,0 +1,234 @@
+
+/** GENERAL **/
+
+
+.article-tree {
+	padding: 0;	
+}
+
+.article-tree-content {
+	position: relative;
+	background: #fff;
+	margin-left: 33%;
+	padding-top: 6px;
+	padding-bottom: 6px;
+}	
+
+.article-tree-img {
+	position: absolute;
+	left: 0%;
+	top: 0;
+	height: 100%;
+	overflow: hidden;
+}
+
+.article-tree-img img {
+	position: relative;
+	left: -25%;
+	height: 100%;
+	min-width: 100%;
+}
+
+
+.line {
+	height: 100%;
+	background: #886672;
+	opacity: .5;
+	width: 1px;
+	position: absolute;
+	left: 24px;
+	top: 0;
+	z-index: 0;
+}
+
+.to-leaf .line {
+	border-bottom: 24px solid #fff;
+}
+
+.from-root .line {
+	border-top: 40px solid #fff;
+}
+
+
+/** ARTICLES IN TREE **/
+.article-tree .node {
+	padding: 2px 25px 2px 0;
+	display: table;
+	width: 100%;
+	position: relative;
+	color: #886672;
+}
+.article-tree .node a {
+	color: #886672
+}
+
+.article-tree .node:hover,
+.article-tree .node:hover a {
+	color: #441624
+}
+
+.article-tree .node > * {
+	display: table-cell;
+}
+	
+.article-tree .node.focus {
+	padding-top: 10px;
+	padding-bottom: 10px;
+}
+
+.article-tree .node.focus header,
+.article-tree .node.focus header a,
+.article-tree .node.focus .content,
+.article-tree .node.focus .content a {
+	color: #00a19a;
+}
+
+.article-tree .node.focus .small-header {
+	margin-bottom: .25em;
+}
+
+.article-tree .node footer{
+	margin-top: 5px;
+}
+
+/*** NODE MARKS **/
+
+.node-mark {
+	width: 50px;
+	text-align: center;
+}
+
+.node-mark > * {
+	position: relative
+	top: -1px;
+	z-index: 1;
+	padding: 3px 0;
+	
+	background: #fff;
+	font-size: 10px;
+	line-height: 1;
+	color: #886672;
+	text-align: left;
+}
+
+article:hover .node-icon span {
+	color: #441624
+}
+
+
+/*** Different visualizations of the tree
+	'node' corresponds to the node view; the default view is the branch-view
+ **/
+.node-view .focus {
+	padding-left: 25px;
+}
+
+.node-view .children .node-mark {
+	padding-left: 25px;
+	width: 40px;
+	text-align: left;
+}
+
+.node-view .section-title {
+	display: block;
+	padding-left: 25px;
+}
+
+.parents {
+	padding-left: 25px;
+	color: #ccc;
+}
+
+.parents article {
+	color: #ccc;
+}
+
+article.separator,
+.section-title {
+	font-size: 9px;
+	text-transform: uppercase;
+	padding: 0;
+	letter-spacing: 1px;
+}
+
+.section-title {
+	padding-left: 50px;
+	display: none;
+}
+
+/* Actions */
+.article-tree footer {
+	opacity: .3;
+	transition: opacity 150ms ease-in-out;
+}
+
+.article-tree footer:hover {
+	opacity: 1;
+}
+.article-tree .actions {
+	display: none;
+	
+	background: #fff;
+	position: absolute;
+	right: 0;
+	top: 0;
+	padding: 0 10px 0 5px;
+	color: #886672;
+}
+
+.article-tree .actions:before {
+	content: ' ';
+	display: block;
+	position: absolute;
+	left: -30px;
+	height: 100%;
+	width: 30px;
+	
+	background: -webkit-linear-gradient(left,rgba(255,255,255,0),rgba(255,255,255,1)); /*Safari 5.1-6*/
+	background: -o-linear-gradient(right,rgba(255,255,255,0),rgba(255,255,255,1)); /*Opera 11.1-12*/
+	background: -moz-linear-gradient(right,rgba(255,255,255,0),rgba(255,255,255,1)); /*Fx 3.6-15*/
+	background: linear-gradient(to right,rgba(255,255,255,0),rgba(255,255,255,1)); /*Standard*/		
+}
+
+.node .actions > * {
+	display: inline-block;
+	margin: 0 3px;
+}
+
+.node:hover .actions {
+	display: inline-block;
+}
+
+.comments-counter {
+	font-style: normal;
+}
+.comments-counter:before{
+	position: relative;
+	top: 2px;
+	margin-right: 3px;
+}
+
+
+.tiny-btn {
+	display: inline-block;
+	border: 1px solid #ccc;
+	border-radius: 2px;
+	font-size: 12px;
+	padding-right: 5px;
+	color: #886672 !important;
+	margin: 0;
+}	
+.tiny-btn:hover {
+	color: #00a19a!important;
+	border-color: #00a19a;
+}
+
+.tiny-btn .arrow {
+	margin-left: 4px;
+}
+
+.tiny-btn .icon {
+	position: relative;
+	top: 1px;
+	margin: 0px 4px 0 5px;
+}
