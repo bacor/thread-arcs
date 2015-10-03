@@ -21,11 +21,12 @@ var ThreadArcs = function(container, nodes, connList, options)  {
 		return new ThreadArcs(container, nodes, connList, options);
 		
 	} else {
-		this.container 	 = container
-		this.nodes		 = nodes
-	    this.connList 	 = connList
-		this.points		 = []
-		this.arcs		 = []
+		this.container 		 = container
+		this.nodes			 = nodes
+	    this.connList 		 = connList
+	    this.invConnList 	 = invertConnList(connList)
+		this.points			 = []
+		this.arcs			 = []
 				
 		this.N 				= nodes.length
 		this.space			= (options['space'] || 40)
@@ -51,10 +52,18 @@ var ThreadArcs = function(container, nodes, connList, options)  {
 				arcLengths.push( Math.abs(this.connList[i][j] - i) )
 			}
 		}
-		this.maxArcLength = Math.max.apply(null, arcLengths) * this.space
+		this.maxArcLength 	= Math.max.apply(null, arcLengths) * this.space
 		
-		// Depths
-		this.depths = getDepths(this.connList)
+		// Depths and children
+		this.depths 		= getDepths(this.invConnList)
+		var children 		= [];
+		var parents 		= [];
+		this.connList.forEach(function(connections, i){
+			children.push(connections.length)
+			parents.push(this.invConnList[i].length)
+		})
+		this.children 		= children
+		this.parents 		= parents
 
 		// Make paper
 		this.paper = new Raphael(
@@ -201,6 +210,101 @@ ThreadArcs.prototype.draw = function() {
 }
 
 
+/**
+ * Sorts the points by generation and then by number of children.
+ * More precisely:
+ * 		1) older generations come first
+ * 		2) those with many children come first
+ * @return {[type]} [description]
+ */
+ThreadArcs.prototype.sortNodes1 = function() {
+	
+	// Initializing
+	newNodes = []
+	for(i=0; i<this.N; i++ ){ newNodes.push(i) }
+	depths = this.depths; children = this.children;
+	console.log(newNodes)
+	// Sort and return
+	newNodes = newNodes.sort(function (i,j) {
+		return (depths[i] > depths[j]) 
+				|| (depths[i] == depths[j]) 
+		 		    && (children[i] < children[j])
+	})
+	return newNodes
+}
+
+
+/**
+ * The sorting function based on 
+ * https://www.medien.ifi.lmu.de/lehre/ws1112/iv/uebung/exercise8_slides.pdf
+ * @return {array} ordered nodes
+ */
+ThreadArcs.prototype.sortNodes2 = function() {
+
+	newNodes = []
+	depths = this.depths
+	this.nodes.forEach(function(node, i){
+		if(depths[i] == 0){
+			newNodes.unshift(i)
+		} else {
+			newNodes.push(i)
+		}
+	})
+	return newNodes
+};
+
+
+/**
+ * Sorts the Thread Arcs tree.
+ *
+ * There are several ways to sort the nodes. First, you can select
+ * one of the built-in methods by passing their number as the method.
+ *  
+ *    - `method=1` 	corresponds is the default sorting
+ *    - `method=2` 	is the sorting by De Luca and von Zezschwitz:
+ *    				www.medien.ifi.lmu.de/lehre/ws1112/iv/uebung/exercise8_slides.pdf
+ *
+ * Alternatively, you can pass an array with the new ordering. This
+ * should be an array of node-indices, not of the node objects themselves.
+ * @param  {mixed} method
+ * @return {object} this this
+ */
+ThreadArcs.prototype.sort = function(method) {
+	
+	// Sort
+	if(typeof(method) == 'object') {
+		sortedNodes = []
+		nodes = this.nodes
+		method.forEach(function(i){
+			sortedNodes.push(nodes[i])
+		})
+
+	} else if(method == 1) {
+		sortedNodes = this.sortNodes1()
+	} else {
+		sortedNodes = this.sortNodes2()
+	}
+	console.log(sortedNodes)
+	
+	// Update connection list
+	sortedConnList = []
+	sortedNodes.forEach(function(i, k){
+		connections = this.connList[i]
+		dir = (this.depths[Math.abs(i)] % 2 - .5) * (2)
+		connections = connections.map(function(j){
+			return dir * sortedNodes.indexOf(Math.abs(j))
+		})
+		sortedConnList.push(connections)
+	})
+
+	// Update class variables and return
+	this.nodes = sortedNodes
+	this.connList = sortedConnList
+	return this
+}
+
+
+
 ThreadArcs.prototype.activatePoint = function(i) {
 	p = this.points[i]
 	p.addClass('active')
@@ -236,90 +340,9 @@ ThreadArcs.prototype.removeClassFromArcs = function(arcs, className) {
 }
 
 
-ThreadArcs.prototype.reindex = function() {
-	// https://www.medien.ifi.lmu.de/lehre/ws1112/iv/uebung/exercise8_slides.pdf,
-	// p. 8
-
-	// Determine generation depth
-	// and the number of children
-	generations = new Array(this.N).fill(0,0,this.N)
-	children 	= new Array(this.N).fill(0,0,this.N)
-	this.connList.forEach(function(connections, i){
-		children[i] = connections.length
-	})
-	console.log(children)
-
-	newNodes = []
-	for(i=0; i<this.N; i++ ){ newNodes.push(i) }
-
-	// We'll sort nodes as follows:
-	// 1) Lower generations come first
-	// 2) Nodes with many children come first
-	newNodes = newNodes.sort(function (i,j) {
-		return (generations[i] > generations[j]) 
-				|| (generations[i] == generations[j]) 
-		 		    && (children[i] < children[j])
-	})
-	console.log('newnodes', newNodes)
-
-	// // Reindex the nodes
-	newNodes = []
-	this.nodes.forEach(function(node, i){
-		if(generations[i] == 0){
-			newNodes.unshift(i)
-		} else {
-			newNodes.push(i)
-		}
-	})
-	
-	newConnList = []
-	newNodes.forEach(function(i, k){
-		connections = this.connList[i]
-		console.log('-----', k, i, '-----')
-		console.log('conn', connections)
-		console.log(generations[Math.abs(i)])
-		dir = (generations[Math.abs(i)] % 2 - .5) * (2)
-		console.log('dir', dir)
-
-		connections = connections.map(function(j){
-			console.log(newNodes.indexOf(Math.abs(j)))
-			return dir * newNodes.indexOf(Math.abs(j))
-		})
-
-		newConnList.push(connections)
-
-		console.log('conn', connections)
-	})
-
-	// this.connList.forEach(function(connections,i) { 
-	// 	dir = (generations[Math.abs(i)] % 2 - .5) * (2)
-	// 	console.log('-----', i, '-----')
-	// 	console.log('connections', connections)
-	// 	console.log('dir', dir)
-	// 	console.log('gen', generations[Math.abs(i)])
-	// 	connections = connections.map(function(j){
-	// 		return dir * newNodes.indexOf(Math.abs(j))
-	// 	})
-	// 	console.log('connections', connections)
-	// 	newConnList[newNodes.indexOf(Math.abs(i))] = connections
-	// })	
-
-	// Update the connection list
-	// newConnList = []
-	// this.connList.forEach(function(connections,i) { 
-	// 	connections = connections.map(function(j){
-	// 		jNew = newNodes.indexOf(Math.abs(j))
-	// 		return (generations[Math.abs(j)] % 2 - .5) * (-2) * jNew
-	// 	})
-	// 	console.log(connections)
-	// 	newConnList[newNodes.indexOf(Math.abs(i))] = connections
-	// })	
-
-	// Update class variables
-	this.nodes = newNodes
-	this.connList = newConnList
-}
-
+/**
+ * TO DO: ANIMATIONS
+ */
 
 
 /**
@@ -388,6 +411,9 @@ ThreadArcs.prototype.lengthenArc = function(arc, length) {
 }
 
 
+/** 
+ * EXTEND RAPHAEL
+ */
 
 
 /**
@@ -413,6 +439,11 @@ Raphael.el.removeClass = function(className) {
 
 
 /**
+ * GENERAL FUNCTIONS
+ */
+
+
+/**
  * Revert the direction of the graph described by the invConnList
  * @param  {array} connList connection list
  * @return {array}          inverted connection list
@@ -432,6 +463,7 @@ function invertConnList(connList){
 
 	return invConnList
 }
+
 
 /**
  * Recursively determines the depth of all ancestors of a given node
@@ -462,16 +494,16 @@ function getPredecessorsDepths(i, depths, invConnList){
 
 /**
  * Determines the depth of all points in a directed acyclic graph
- * described by a connection list L. Here L[i] is a list with the
- * indices of all children of i (i.e., i-->k for all j in L[i]). It
- * returns a list D of depths (i.e. D[i] is the depth of node i)
+ * described by a connection list L. Here L[i] is an inverted list 
+ * with the indices of all parents.
+ * It returns a list D of depths (i.e. D[i] is the depth of node i)
  * @param  {array} connList connection list
  * @return {array}          depths
  */
-function getDepths(connList) {
-	var invConnList = invertConnList(connList)
+function getDepths(invConnList) {
+	// var invConnList = invertConnList(connList)
 	var depths = []
-	for(i=0; i<connList.length; i++) { 
+	for(i=0; i<invConnList.length; i++) { 
 		depths.push(undefined)
 	}
 
