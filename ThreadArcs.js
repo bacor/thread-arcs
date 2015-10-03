@@ -156,7 +156,11 @@ ThreadArcs.prototype.getArcPath = function(posA, posB, dir) {
 
 
 /** 
- * ThreadArcs.addArc
+ * Draws an arc between two points
+ * @param {int} i index of the first point
+ * @param {int} j index of the second point
+ * @param {int} dir direction (1=positive, -1=negative)
+ * @return {object} this (ThreadArcs object)
  */
 ThreadArcs.prototype.drawArc = function(i, j, dir) {
 	
@@ -180,6 +184,7 @@ ThreadArcs.prototype.drawArc = function(i, j, dir) {
 
 /** 
  * Draws the entire ThreadArcs thing
+ * @return {objec} this (ThreadArcs object)
  */
 ThreadArcs.prototype.draw = function() {
 	
@@ -297,7 +302,11 @@ ThreadArcs.prototype.sort = function(method) {
 	return this
 }
 
-
+/**
+ * Decorate descendents with css classes indicating their depth.
+ * @param {int} i     index of node
+ * @param {int} depth (only neede for recursion)
+ */
 ThreadArcs.prototype.addDepthToDescendants = function(i, depth) {
 	depth 		|| (depth=0)
 
@@ -321,6 +330,12 @@ ThreadArcs.prototype.addDepthToDescendants = function(i, depth) {
 }
 
 
+/**
+ * Decorate predecessors with css classes indicating their depth,
+ * @see  addDepthToDescendants
+ * @param {int} i     index of node
+ * @param {depth} depth (for recursion only)
+ */
 ThreadArcs.prototype.addDepthToPredecessors = function(i, depth) {
 	depth 		|| (depth = 0)
 
@@ -343,13 +358,20 @@ ThreadArcs.prototype.addDepthToPredecessors = function(i, depth) {
 	}.bind(this))
 }
 
-
+/**
+ * Highlights a node, its predecessors and descendants
+ * @param  {int} i index of the node to highlight
+ */
 ThreadArcs.prototype.highlight = function(i) {
 	this.points[i].addClass('highlight')
 	this.addDepthToDescendants(i)
 	this.addDepthToPredecessors(i)
 };
 
+
+/**
+ * Reset the highlighting (removes the relevant css classes)
+ */
 ThreadArcs.prototype.resetHighlighting = function(){
 	this.arcs.forEach(function(arc) {
 		arc.removeClass('depth-'+arc._relDepth)
@@ -370,40 +392,15 @@ ThreadArcs.prototype.resetHighlighting = function(){
 // TO DO: change binds
 // TO DO j and
 
-
+/**
+ * Activates a point
+ * @param  {int} i index of the point
+ * @return
+ */
 ThreadArcs.prototype.activatePoint = function(i) {
 	p = this.points[i]
 	p.addClass('active')
-	//this.addClassToArcs(i, 'active')
 	this.highlight(i)
-}
-
-
-ThreadArcs.prototype.addClassToArcs = function(arcs, className) {
-	
-	// If arcs is a number, treat it as the index of a point
-	// and retreive all neighbouring arcs
-	if(typeof(arcs) == 'number') {
-		arcs = this.points[arcs]._arcs
-	}
-
-	for( i = 0; i < arcs.length; i++ ) {
-		arcs[i].addClass(className)
-	}
-}
-
-
-ThreadArcs.prototype.removeClassFromArcs = function(arcs, className) {
-	
-	// If arcs is a number, treat it as the index of a point
-	// and retreive all neighbouring arcs
-	if(typeof(arcs) == 'number') {
-		arcs = this.points[arcs]._arcs
-	}
-	
-	for( i = 0; i < arcs.length; i++ ) {
-		arcs[i].removeClass(className)
-	}
 }
 
 
