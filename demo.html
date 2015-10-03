@@ -1,0 +1,58 @@
+<html>
+    <head>
+        <title>Thread Arcs Demo</title>
+        <script type="text/javascript" src="raphael.js"></script>
+        <script type="text/javascript" src="ThreadArcs.js"></script>
+		<link href="http://slagom.omslag.de/wp-content/themes/scaena/library/servescss.php/style.scss" type="text/css" rel="stylesheet" />
+		<link href="css/ThreadArcs.css" type="text/css" rel="stylesheet" />
+	    <style type="text/css">
+	    	#canvas_container,#canvas_container2, #canvas_container3 {
+	    		margin: 30px 100px;
+	    	}
+	    </style>
+        <script type="text/javascript">
+        	window.onload = function() {
+			    articles = [0,1,2,3,4,5,6,7,8,9]
+
+			    // Directed graph
+			    // if j in L[i], then j is a reply to L[i],
+			    // so there is an edge i --> j
+			    connList = [
+			    	[2,3,4,5], //0
+			    	[0], //1
+			    	[3,4], //2
+			    	[6], //3
+			    	[7], //4
+			    	[], //5
+			    	[], //6 
+			    	[8], //7
+			    	[9],
+			    	[]
+
+			    ]
+
+			    options = {
+			    	'maxArcHeight': 80,
+			    	'space': 20,
+			    	'lambda': 2/3,
+			    	'orientation': 'horizontal'
+			    }
+
+			    TA = ThreadArcs('canvas_container', articles, connList, options) 
+			    TA.sort(1).draw()
+
+			    TA2 = ThreadArcs('canvas_container2', articles, connList, options)
+			   	TA2.sort(2).draw()
+
+			    TA3 = ThreadArcs('canvas_container3', articles, connList, options)
+			   	TA3.sort([9,8,7,6,5,4,3,2,1,0]).draw()
+			}
+
+        </script>
+    </head>
+    <body>
+        <div id="canvas_container"></div>
+        <div id="canvas_container2"></div>
+        <div id="canvas_container3"></div>
+    </body>
+</html>
