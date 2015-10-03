@@ -121,7 +121,7 @@ ThreadArcs.prototype.drawPoint = function(pos) {
 	})
 	
 	this.points.push(p)
-	return p
+	return this
 }
 
 
@@ -178,7 +178,7 @@ ThreadArcs.prototype.drawArc = function(A, B, dir) {
 	arc.addClass('arc a' + arc._index + ' arc-p' + A._index+' arc-p' + B._index)
 	
 	this.arcs.push(arc)
-	return arc
+	return this
 }
 
 
@@ -207,6 +207,7 @@ ThreadArcs.prototype.draw = function() {
 		el.parentNode.appendChild(el);
 	}
 
+	return this
 }
 
 
@@ -217,7 +218,7 @@ ThreadArcs.prototype.draw = function() {
  * 		2) those with many children come first
  * @return {[type]} [description]
  */
-ThreadArcs.prototype.sortNodes1 = function() {
+ThreadArcs.prototype.getSortedNodes1 = function() {
 	
 	// Initializing
 	newNodes = []
@@ -239,7 +240,7 @@ ThreadArcs.prototype.sortNodes1 = function() {
  * https://www.medien.ifi.lmu.de/lehre/ws1112/iv/uebung/exercise8_slides.pdf
  * @return {array} ordered nodes
  */
-ThreadArcs.prototype.sortNodes2 = function() {
+ThreadArcs.prototype.getSortedNodes2 = function() {
 
 	newNodes = []
 	depths = this.depths
@@ -280,9 +281,9 @@ ThreadArcs.prototype.sort = function(method) {
 		})
 
 	} else if(method == 1) {
-		sortedNodes = this.sortNodes1()
+		sortedNodes = this.getSortedNodes1()
 	} else {
-		sortedNodes = this.sortNodes2()
+		sortedNodes = this.getSortedNodes2()
 	}
 	console.log(sortedNodes)
 	
@@ -302,7 +303,6 @@ ThreadArcs.prototype.sort = function(method) {
 	this.connList = sortedConnList
 	return this
 }
-
 
 
 ThreadArcs.prototype.activatePoint = function(i) {
