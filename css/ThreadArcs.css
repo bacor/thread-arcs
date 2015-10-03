@@ -4,13 +4,13 @@ svg {
 
 .point,
 .arc {
-	transition: all 300ms ease-in-out;
+	transition: all 600ms ease-out;
 }
 
 .point {
 	fill: rgba(136, 102, 114, .2);
-	stroke: rgb(255, 246, 238);
-	stroke-width: 3px;
+	stroke: #fff;
+	stroke-width: 4px;
 	cursor: pointer;
 }
 
@@ -46,7 +46,7 @@ svg {
 .arc.depth-3,
 .arc.depth-4,
 .arc.depth-5 {
-	stroke-width: 1.8px;
+	stroke-width: 2px;
 	stroke: rgba(0, 161, 154, .2);
 }
 
