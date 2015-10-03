@@ -3,9 +3,9 @@ svg {
 }
 
 .point {
-	fill: rgba(136, 102, 114, .3);
+	fill: rgba(136, 102, 114, 1);
 	stroke: rgb(255, 246, 238);
-	stroke-width: 5px;
+	stroke-width: 0px;
 	
 	transition: fill 150ms ease-in;
 }
@@ -18,7 +18,9 @@ svg {
 
 .point.active {
 	opacity: 1;
-	fill: #00a19a;
+	fill: rgb(255, 246, 238);
+	stroke: #00a19a;
+	stroke-width:2px;
 }
 
 .arc {
@@ -37,7 +39,7 @@ svg {
 
 .arc.active {
 	stroke:#00a19a;
-	stroke-width: 1px;
+	stroke-width: 2px;
 	opacity: 1;
 }
 .arc.active.hover {

@@ -53,6 +53,9 @@ var ThreadArcs = function(container, nodes, connList, options)  {
 		}
 		this.maxArcLength = Math.max.apply(null, arcLengths) * this.space
 		
+		// Depths
+		this.depths = getDepths(this.connList)
+
 		// Make paper
 		this.paper = new Raphael(
 			document.getElementById(this.container), 
@@ -86,7 +89,7 @@ ThreadArcs.prototype.drawPoint = function(pos) {
 	
 	xy = this.xy(pos)
 	p = this.paper.circle(xy[0], xy[1], this.radius)
-	p.addClass('point p' + this.points.length + 1)
+	p.addClass('point p' + (this.points.length + 1))
 	p._index = this.points.length + 1
 	p._pos = pos
 	p._arcs = []
@@ -233,6 +236,92 @@ ThreadArcs.prototype.removeClassFromArcs = function(arcs, className) {
 }
 
 
+ThreadArcs.prototype.reindex = function() {
+	// https://www.medien.ifi.lmu.de/lehre/ws1112/iv/uebung/exercise8_slides.pdf,
+	// p. 8
+
+	// Determine generation depth
+	// and the number of children
+	generations = new Array(this.N).fill(0,0,this.N)
+	children 	= new Array(this.N).fill(0,0,this.N)
+	this.connList.forEach(function(connections, i){
+		children[i] = connections.length
+	})
+	console.log(children)
+
+	newNodes = []
+	for(i=0; i<this.N; i++ ){ newNodes.push(i) }
+
+	// We'll sort nodes as follows:
+	// 1) Lower generations come first
+	// 2) Nodes with many children come first
+	newNodes = newNodes.sort(function (i,j) {
+		return (generations[i] > generations[j]) 
+				|| (generations[i] == generations[j]) 
+		 		    && (children[i] < children[j])
+	})
+	console.log('newnodes', newNodes)
+
+	// // Reindex the nodes
+	newNodes = []
+	this.nodes.forEach(function(node, i){
+		if(generations[i] == 0){
+			newNodes.unshift(i)
+		} else {
+			newNodes.push(i)
+		}
+	})
+	
+	newConnList = []
+	newNodes.forEach(function(i, k){
+		connections = this.connList[i]
+		console.log('-----', k, i, '-----')
+		console.log('conn', connections)
+		console.log(generations[Math.abs(i)])
+		dir = (generations[Math.abs(i)] % 2 - .5) * (2)
+		console.log('dir', dir)
+
+		connections = connections.map(function(j){
+			console.log(newNodes.indexOf(Math.abs(j)))
+			return dir * newNodes.indexOf(Math.abs(j))
+		})
+
+		newConnList.push(connections)
+
+		console.log('conn', connections)
+	})
+
+	// this.connList.forEach(function(connections,i) { 
+	// 	dir = (generations[Math.abs(i)] % 2 - .5) * (2)
+	// 	console.log('-----', i, '-----')
+	// 	console.log('connections', connections)
+	// 	console.log('dir', dir)
+	// 	console.log('gen', generations[Math.abs(i)])
+	// 	connections = connections.map(function(j){
+	// 		return dir * newNodes.indexOf(Math.abs(j))
+	// 	})
+	// 	console.log('connections', connections)
+	// 	newConnList[newNodes.indexOf(Math.abs(i))] = connections
+	// })	
+
+	// Update the connection list
+	// newConnList = []
+	// this.connList.forEach(function(connections,i) { 
+	// 	connections = connections.map(function(j){
+	// 		jNew = newNodes.indexOf(Math.abs(j))
+	// 		return (generations[Math.abs(j)] % 2 - .5) * (-2) * jNew
+	// 	})
+	// 	console.log(connections)
+	// 	newConnList[newNodes.indexOf(Math.abs(i))] = connections
+	// })	
+
+	// Update class variables
+	this.nodes = newNodes
+	this.connList = newConnList
+}
+
+
+
 /**
  * Expands a point, i.e. moves all lower points and arcs down
  */
@@ -323,4 +412,73 @@ Raphael.el.removeClass = function(className) {
 };
 
 
+/**
+ * Revert the direction of the graph described by the invConnList
+ * @param  {array} connList connection list
+ * @return {array}          inverted connection list
+ */
+function invertConnList(connList){
+	N = connList.length;
+	invConnList = []
+	for(i=0; i<N; i++) {
+		invConnList.push([])
+	}
+
+	connList.forEach(function(connections, i){
+		connections.forEach(function(j){
+			invConnList[Math.abs(j)].push(i)
+		}) 
+	})
+
+	return invConnList
+}
+
+/**
+ * Recursively determines the depth of all ancestors of a given node
+ * in a directed acylic graph. The graph should be described by an
+ * inverted connection list L. That means that L[i] is a list of all
+ * _parent_ nodes of i.
+ * @param  {int} i         	   starting node
+ * @param  {array} depths      array of depths will be updated 
+ * @param  {array} invConnList inverted connection list
+ * @return {array}             array of updated weights
+ */
+function getPredecessorsDepths(i, depths, invConnList){
+	// Only enter recursion if necessary
+	if(depths.indexOf(i) == -1) {
+		var parentDepths = []
+		invConnList[i].forEach(function(j){
+			depths = getPredecessorsDepths(j, depths, invConnList)
+			parentDepths.push(depths[j])
+		})
+		if(parentDepths.length == 0) {
+			depths[i] = 0
+		} else {
+			depths[i] = Math.min.apply(null, parentDepths) + 1 
+		}
+	}
+	return depths
+}
+
+/**
+ * Determines the depth of all points in a directed acyclic graph
+ * described by a connection list L. Here L[i] is a list with the
+ * indices of all children of i (i.e., i-->k for all j in L[i]). It
+ * returns a list D of depths (i.e. D[i] is the depth of node i)
+ * @param  {array} connList connection list
+ * @return {array}          depths
+ */
+function getDepths(connList) {
+	var invConnList = invertConnList(connList)
+	var depths = []
+	for(i=0; i<connList.length; i++) { 
+		depths.push(undefined)
+	}
+
+	while( depths.indexOf(undefined) != -1 ) {
+		i = depths.indexOf(undefined)
+		depths = getPredecessorsDepths(i, depths, invConnList)
+	}
+	return depths
+}
 
