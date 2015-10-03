@@ -26,14 +26,15 @@ var ThreadArcs = function(container, nodes, connList, options)  {
 	    this.connList 		 = connList
 	    this.invConnList 	 = invertConnList(connList)
 		this.points			 = []
-		this.arcs			 = []
-				
-		this.N 				= nodes.length
-		this.space			= (options['space'] || 40)
-		this.maxArcHeight	= (options['maxArcHeight'] || 100)
-		this.padding		= (options['padding'] || this.space/2)
-		this.lambda			= (options['lambda'] || 1/2)
-		this.radius 		= (options['radius'] || 5)
+		this.N 				 = nodes.length
+		// this.arcs			 = repeat(repeat([], this.N), this.N)
+		this.arcs 			 = []
+		
+		this.space			 = (options['space'] || 40)
+		this.maxArcHeight	 = (options['maxArcHeight'] || 100)
+		this.padding		 = (options['padding'] || this.space/2)
+		this.lambda			 = (options['lambda'] || 1/2)
+		this.radius 		 = (options['radius'] || 5)
 
 		this.orientation	= (options['orientation'] || 'horizontal')
 		this.axisPos		= (options['axisPos'] || this.maxArcHeight)
@@ -97,28 +98,22 @@ ThreadArcs.prototype.xy = function(pos) {
 ThreadArcs.prototype.drawPoint = function(pos) {
 	
 	xy = this.xy(pos)
-	p = this.paper.circle(xy[0], xy[1], this.radius)
+	var p = this.paper.circle(xy[0], xy[1], this.radius)
 	p.addClass('point p' + (this.points.length + 1))
 	p._index = this.points.length + 1
 	p._pos = pos
-	p._arcs = []
+	p._arcsOut = []
+	p._arcsIn = []
+	p._relDepth = this.N * 2 // just large
 
 	// Hover
-	p.hover(function(){
+	p.hover(function(e, a){
+		this.highlight(p._index - 1)
 		
-		// hover all neighbouring arcs
-		for(i=0; i < this._arcs.length; i++){
-			this._arcs[i].addClass('hover')
-			this._arcs[i]._from.addClass('hover')
-			this._arcs[i]._to.addClass('hover')
-		}
-	}, function(){
-		for(i=0; i < this._arcs.length; i++){
-			this._arcs[i].removeClass('hover')
-			this._arcs[i]._from.removeClass('hover')
-			this._arcs[i]._to.removeClass('hover')
-		}
-	})
+	}.bind(this), function(){
+		this.resetHighlighting()
+
+	}.bind(this))
 	
 	this.points.push(p)
 	return this
@@ -134,12 +129,12 @@ ThreadArcs.prototype.drawPoint = function(pos) {
  */
 ThreadArcs.prototype.getArcPath = function(posA, posB, dir) {
 	dir || (dir = 1)
-	ax = this.axisPos
+	var ax = this.axisPos
 	
-	relArcLength = Math.abs(posB - posA) / this.maxArcLength
-	H = Math.pow(relArcLength, this.lambda) * this.maxArcHeight
+	var relArcLength = Math.abs(posB - posA) / this.maxArcLength
+	var H = Math.pow(relArcLength, this.lambda) * this.maxArcHeight
 	H = ax + dir * H
-	d = dir * this.radius / 2 // small offset from point
+	var d = dir * this.radius / 2 // small offset from point
 	
 	if(this.orientation == 'vertical') {
 		path =	  'M' + (ax+d) +' '+ posA +' '
@@ -163,20 +158,21 @@ ThreadArcs.prototype.getArcPath = function(posA, posB, dir) {
 /** 
  * ThreadArcs.addArc
  */
-ThreadArcs.prototype.drawArc = function(A, B, dir) {
-	dir || (dir = 1)
+ThreadArcs.prototype.drawArc = function(i, j, dir) {
 	
-	path = this.getArcPath(A._pos, B._pos, dir)
-	
-	arc = this.paper.path(path)
-	arc._index = this.arcs.length + 1
-	arc._from = A
-	arc._to = B
+	var A = this.points[i]
+	var B = this.points[j]
+	var	path = this.getArcPath(A._pos, B._pos, dir)
+	var arc = this.paper.path(path)
+
+	arc.addClass('arc arc-p' + i +' arc-p' + j)
+
+	arc._from = i
+	arc._to = j
 	arc._dir = dir
-	A._arcs.push(arc)
-	B._arcs.push(arc)
-	arc.addClass('arc a' + arc._index + ' arc-p' + A._index+' arc-p' + B._index)
-	
+	arc._relDepth = this.N*2
+	A._arcsOut.push(arc)
+	B._arcsIn.push(arc)
 	this.arcs.push(arc)
 	return this
 }
@@ -192,12 +188,11 @@ ThreadArcs.prototype.draw = function() {
 		this.drawPoint(this.padding + i * this.space, this.nodes[i])
 	}
 
-	// Draw all arcs	
+	// Draw all arcs
 	for( i = 0; i < this.N; i++ ) {
-		for(j = 0; j < this.connList[i].length; j++) {
-			A = this.points[i]
-			B = this.points[Math.abs(this.connList[i][j])]
-			this.drawArc(A, B, Math.sign(this.connList[i][j]))
+		for(k = 0; k < this.connList[i].length; k++) {
+			var j = this.connList[i][k]
+			this.drawArc(i, Math.abs(j), Math.sign(j))
 		}
 	}
 	
@@ -224,7 +219,6 @@ ThreadArcs.prototype.getSortedNodes1 = function() {
 	newNodes = []
 	for(i=0; i<this.N; i++ ){ newNodes.push(i) }
 	depths = this.depths; children = this.children;
-	console.log(newNodes)
 	// Sort and return
 	newNodes = newNodes.sort(function (i,j) {
 		return (depths[i] > depths[j]) 
@@ -285,7 +279,6 @@ ThreadArcs.prototype.sort = function(method) {
 	} else {
 		sortedNodes = this.getSortedNodes2()
 	}
-	console.log(sortedNodes)
 	
 	// Update connection list
 	sortedConnList = []
@@ -305,10 +298,84 @@ ThreadArcs.prototype.sort = function(method) {
 }
 
 
+ThreadArcs.prototype.addDepthToDescendants = function(i, depth) {
+	depth 		|| (depth=0)
+
+	this.points[i]._arcsOut.forEach(function(arc){
+		
+		// Update css classes 
+		// if the depth is lower than the previous rel depth
+		if(arc._relDepth > depth) {
+			arc.removeClass('depth-'+arc._relDepth)
+			arc._relDepth = depth
+			arc.addClass('depth-'+arc._relDepth)
+	
+			var to = this.points[arc._to]
+			to.removeClass('depth-'+to._relDepth)
+			to._relDepth = depth
+			to.addClass('depth-'+to._relDepth)
+		}
+		
+		this.addDepthToDescendants(arc._to, depth + 1)
+	}.bind(this))
+}
+
+
+ThreadArcs.prototype.addDepthToPredecessors = function(i, depth) {
+	depth 		|| (depth = 0)
+
+
+	this.points[i]._arcsIn.forEach(function(arc){
+		// Update css classes 
+		// if the depth is lower than the previous rel depth
+		if(arc._relDepth > depth) {
+			arc.removeClass('depth-m'+arc._relDepth)
+			arc._relDepth = depth
+			arc.addClass('depth-m'+arc._relDepth)
+	
+			var from = this.points[arc._from]
+			from.removeClass('depth-m'+from._relDepth)
+			from._relDepth = depth
+			from.addClass('depth-m'+from._relDepth)
+		}
+		
+		this.addDepthToPredecessors(arc._from, depth + 1)
+	}.bind(this))
+}
+
+
+ThreadArcs.prototype.highlight = function(i) {
+	this.points[i].addClass('highlight')
+	this.addDepthToDescendants(i)
+	this.addDepthToPredecessors(i)
+};
+
+ThreadArcs.prototype.resetHighlighting = function(){
+	this.arcs.forEach(function(arc) {
+		arc.removeClass('depth-'+arc._relDepth)
+		arc.removeClass('depth-m'+arc._relDepth)
+		arc._relDepth = this.N*2
+	})
+
+	this.points.forEach(function(p) {
+		p.removeClass('highlight')
+		p.removeClass('depth-'+p._relDepth)
+		p.removeClass('depth-m'+p._relDepth)
+		p._relDepth = this.N*2
+	})
+
+}
+
+
+// TO DO: change binds
+// TO DO j and
+
+
 ThreadArcs.prototype.activatePoint = function(i) {
 	p = this.points[i]
 	p.addClass('active')
-	this.addClassToArcs(i, 'active')
+	//this.addClassToArcs(i, 'active')
+	this.highlight(i)
 }
 
 
@@ -514,3 +581,23 @@ function getDepths(invConnList) {
 	return depths
 }
 
+
+function repeat(object, N) {
+	var repeated = []
+	for(i=0; i<N; i++){
+		repeated.push(object)
+	}
+	return repeated
+}
+
+
+//http://stackoverflow.com/questions/3895478/does-javascript-have-a-method-like-range-to-generate-an-array-based-on-suppl
+var range = function(start, stop, step) {
+	start || (start = 0)
+    var a = [start];
+    while (start < stop) {
+        start += step || 1;
+        a.push(start);
+    }
+    return a;
+};

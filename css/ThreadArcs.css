@@ -2,12 +2,22 @@ svg {
 	margin: 5px;
 }
 
+.point,
+.arc {
+	transition: all 300ms ease-in-out;
+}
+
 .point {
-	fill: rgba(136, 102, 114, 1);
+	fill: rgba(136, 102, 114, .2);
 	stroke: rgb(255, 246, 238);
-	stroke-width: 0px;
-	
-	transition: fill 150ms ease-in;
+	stroke-width: 3px;
+	cursor: pointer;
+}
+
+.arc {
+	stroke: rgba(136, 102, 114, .3);
+	stroke-width: 1px;
+	fill: transparent;
 }
 
 .point:hover,
@@ -16,32 +26,56 @@ svg {
 	fill: rgba(136, 102, 114, 1);
 }
 
-.point.active {
-	opacity: 1;
+.point.highlight {
 	fill: rgb(255, 246, 238);
 	stroke: #00a19a;
 	stroke-width:2px;
 }
 
-.arc {
-	stroke: rgba(136, 102, 114, .3);
-	stroke-width: 1px;
-	fill: transparent;
-	
-	transition: stroke 150ms ease-in;
-	transition: stroke-width 150ms ease-in;
-}
+/*rgb(196, 4, 63);*/
 
 .arc.hover {
 	stroke-width: 2px;
 	stroke: rgba(136, 102, 114, 1);
 }
 
-.arc.active {
-	stroke:#00a19a;
-	stroke-width: 2px;
-	opacity: 1;
+/* General styles for highlighted arcs */
+.arc.depth-0, 
+.arc.depth-1,
+.arc.depth-2,
+.arc.depth-3,
+.arc.depth-4,
+.arc.depth-5 {
+	stroke-width: 1.8px;
+	stroke: rgba(0, 161, 154, .2);
 }
-.arc.active.hover {
-	stroke-width: 2px; 
+
+.arc.depth-m0, 
+.arc.depth-m1,
+.arc.depth-m2,
+.arc.depth-m3,
+.arc.depth-m4,
+.arc.depth-m5 {
+	stroke: rgba(196, 4, 63, .25);
+	stroke-width: 1.2px;
 }
+
+/* Predecessors */
+.point.depth-m2 { fill: rgba(196, 4, 63, .4); }
+.arc.depth-m2 { stroke: rgba(196, 4, 63, .4);}
+
+.point.depth-m1 { fill: rgba(196, 4, 63, .65); }
+.arc.depth-m1 { stroke: rgba(196, 4, 63, .65); }
+
+.point.depth-m0 { fill: rgba(196, 4, 63,  1); }
+.arc.depth-m0 { stroke: rgba(196, 4, 63,  1); }
+
+/* Descendants */
+.point.depth-0 {  fill: rgba(0, 161, 154,  1); }
+.arc.depth-0 {  stroke: rgba(0, 161, 154,  1); }
+
+.point.depth-1 {  fill: rgba(0, 161, 154, .5); }
+.arc.depth-1 {  stroke: rgba(0, 161, 154, .5); }
+
+.point.depth-2 {  fill: rgba(0, 161, 154, .2); }
+.arc.depth-2 {  stroke: rgba(0, 161, 154, .2); }
