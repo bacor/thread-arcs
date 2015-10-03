@@ -41,6 +41,8 @@ var ThreadArcs = function(container, nodes, connList, options)  {
 		this.width 			= this.space * (this.N - 1) + 2 * this.padding
 		this.height 		= (options['size'] || this.maxArcHeight * 2)
 		
+		this.active 		= []
+
 		if(this.orientation == 'vertical'){	
 			this.width 		= this.height
 			this.height 	= this.space * (this.N - 1) + 2 * this.padding
@@ -75,7 +77,6 @@ var ThreadArcs = function(container, nodes, connList, options)  {
 	}
 }
 
-
 /**
  * Get coordinates from a position
  * @param  {float} pos position
@@ -88,7 +89,6 @@ ThreadArcs.prototype.xy = function(pos) {
 		return [this.axisPos, pos]
 	}
 }
-
 
 /**
  * Draws a point on the paper
@@ -108,17 +108,21 @@ ThreadArcs.prototype.drawPoint = function(pos) {
 
 	// Hover
 	p.hover(function(e, a){
+		if(this.active.length > 0) {
+			clearTimeout(this.activeTimeout) 
+			this.resetHighlighting()	
+		}
 		this.highlight(p._index - 1)
 		
 	}.bind(this), function(){
 		this.resetHighlighting()
+		this.activeTimeout = setTimeout(this.showActive.bind(this), 300)
 
 	}.bind(this))
 	
 	this.points.push(p)
 	return this
 }
-
 
 /**
  * Get the arc (svg path) between two points
@@ -154,7 +158,6 @@ ThreadArcs.prototype.getArcPath = function(posA, posB, dir) {
 	return path
 }
 
-
 /** 
  * Draws an arc between two points
  * @param {int} i index of the first point
@@ -180,7 +183,6 @@ ThreadArcs.prototype.drawArc = function(i, j, dir) {
 	this.arcs.push(arc)
 	return this
 }
-
 
 /** 
  * Draws the entire ThreadArcs thing
@@ -210,7 +212,6 @@ ThreadArcs.prototype.draw = function() {
 	return this
 }
 
-
 /**
  * Sorts the points by generation and then by number of children.
  * More precisely:
@@ -233,7 +234,6 @@ ThreadArcs.prototype.getSortedNodes1 = function() {
 	return newNodes
 }
 
-
 /**
  * The sorting function based on 
  * https://www.medien.ifi.lmu.de/lehre/ws1112/iv/uebung/exercise8_slides.pdf
@@ -252,7 +252,6 @@ ThreadArcs.prototype.getSortedNodes2 = function() {
 	})
 	return newNodes
 };
-
 
 /**
  * Sorts the Thread Arcs tree.
@@ -329,7 +328,6 @@ ThreadArcs.prototype.addDepthToDescendants = function(i, depth) {
 	}.bind(this))
 }
 
-
 /**
  * Decorate predecessors with css classes indicating their depth,
  * @see  addDepthToDescendants
@@ -361,16 +359,18 @@ ThreadArcs.prototype.addDepthToPredecessors = function(i, depth) {
 /**
  * Highlights a node, its predecessors and descendants
  * @param  {int} i index of the node to highlight
+ * @return {object} this (ThreadArcs Object)
  */
 ThreadArcs.prototype.highlight = function(i) {
 	this.points[i].addClass('highlight')
 	this.addDepthToDescendants(i)
 	this.addDepthToPredecessors(i)
+	return this
 };
-
 
 /**
  * Reset the highlighting (removes the relevant css classes)
+ * @return {object} this (ThreadArcs Object)
  */
 ThreadArcs.prototype.resetHighlighting = function(){
 	this.arcs.forEach(function(arc) {
@@ -385,24 +385,54 @@ ThreadArcs.prototype.resetHighlighting = function(){
 		p.removeClass('depth-m'+p._relDepth)
 		p._relDepth = this.N*2
 	})
-
+	return this
 }
-
-
-// TO DO: change binds
-// TO DO j and
 
 /**
  * Activates a point
- * @param  {int} i index of the point
- * @return
+ * @param  {int} i index of point
+ * @return {object}   this (ThreadArcs object)
  */
-ThreadArcs.prototype.activatePoint = function(i) {
-	p = this.points[i]
-	p.addClass('active')
+ThreadArcs.prototype.activate = function(i) {
+	this.points[i].addClass('active')
 	this.highlight(i)
+
+	if(this.active.indexOf(i) == -1) {
+		this.active.push(i)
+	}
+	return this
 }
 
+
+/**
+ * Deactivates a point
+ * @param  {int} i index of point
+ * @return {object}   this (ThreadArcs object)
+ */
+ThreadArcs.prototype.deactivate = function(i) {
+	this.points[i].removeClass('active')
+
+	// Remove from active elements
+	var index = this.active.indexOf(i)
+	if (index > -1) {
+ 	   this.active.splice(index, 1);
+	}
+
+	this.resetHighlighting().showActive()
+	return this
+}
+
+
+/**
+ * Shows all active points
+ * @return {object} this (ThreadArcs object)
+ */
+ThreadArcs.prototype.showActive = function() {
+	this.active.forEach(function(i){
+		this.activate(i)
+	}.bind(this))
+	return this
+}
 
 /**
  * TO DO: ANIMATIONS
@@ -486,7 +516,9 @@ ThreadArcs.prototype.lengthenArc = function(arc, length) {
  */
 Raphael.el.addClass = function(className) {
 	origClass = this.node.getAttribute('class')
-    this.node.setAttribute("class", origClass + ' ' + className);
+	if(origClass == null || origClass.indexOf(className) == -1) {
+	    this.node.setAttribute("class", origClass + ' ' + className);
+	}
     return this;
 };
 
