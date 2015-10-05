@@ -29,6 +29,7 @@ var ThreadArcs = function(container, nodes, connList, options)  {
 		this.N 				 = nodes.length
 		// this.arcs			 = repeat(repeat([], this.N), this.N)
 		this.arcs 			 = []
+		this.nodeIndices     = range(0,this.N-1)
 		
 		this.space			 = (options['space'] || 40)
 		this.maxArcHeight	 = (options['maxArcHeight'] || 100)
@@ -100,7 +101,7 @@ ThreadArcs.prototype.drawPoint = function(pos) {
 	xy = this.xy(pos)
 	var p = this.paper.circle(xy[0], xy[1], this.radius)
 	p.addClass('point p' + (this.points.length + 1))
-	p._index = this.points.length + 1
+	p._index = this.points.length
 	p._pos = pos
 	p._arcsOut = []
 	p._arcsIn = []
@@ -112,11 +113,13 @@ ThreadArcs.prototype.drawPoint = function(pos) {
 			clearTimeout(this.activeTimeout) 
 			this.resetHighlighting()	
 		}
-		this.highlight(p._index - 1)
+		this.highlight(p._index)
+		this.showTooltip(p._index)
 		
 	}.bind(this), function(){
 		this.resetHighlighting()
 		this.activeTimeout = setTimeout(this.showActive.bind(this), 300)
+		this.hideTooltip()
 
 	}.bind(this))
 	
@@ -269,33 +272,44 @@ ThreadArcs.prototype.getSortedNodes2 = function() {
  * @return {object} this this
  */
 ThreadArcs.prototype.sort = function(method) {
-	
 	// Sort
+	// should return only the new indices, not the nodes themselves!
 	if(typeof(method) == 'object') {
-		sortedNodes = []
+		var sortedNodesIndices = []
 		nodes = this.nodes
 		method.forEach(function(i){
-			sortedNodes.push(nodes[i])
+			sortedNodesIndices.push(nodes[i])
 		})
 
 	} else if(method == 1) {
-		sortedNodes = this.getSortedNodes1()
+		var sortedNodesIndices = this.getSortedNodes1()
 	} else {
-		sortedNodes = this.getSortedNodes2()
+		var sortedNodesIndices = this.getSortedNodes2()
 	}
+
+	
+
+	// Sort the nodes
+	var sortedNodes = []
+	sortedNodesIndices.forEach(function(i){
+		sortedNodes.push(this.nodes[i])
+	}.bind(this))
 	
 	// Update connection list
 	sortedConnList = []
-	sortedNodes.forEach(function(i, k){
+	sortedNodesIndices.forEach(function(i){
 		connections = this.connList[i]
 		dir = (this.depths[Math.abs(i)] % 2 - .5) * (2)
 		connections = connections.map(function(j){
-			return dir * sortedNodes.indexOf(Math.abs(j))
+			return dir * sortedNodesIndices.indexOf(Math.abs(j))
 		})
 		sortedConnList.push(connections)
-	})
+	}.bind(this))
 
 	// Update class variables and return
+	// Also store a 'translation' (nodeIndices)
+	//  so that we can access nodes by their original ids
+	this.nodeIndices = sortedNodesIndices
 	this.nodes = sortedNodes
 	this.connList = sortedConnList
 	return this
@@ -434,6 +448,122 @@ ThreadArcs.prototype.showActive = function() {
 	return this
 }
 
+
+/**
+ * Creates the tooltip or returns the object if it exists
+ * @return {object} HTML Tooltip element
+ */
+ThreadArcs.prototype.getTooltip = function() {
+
+	if(this.tooltip == undefined) {
+		var tooltip = document.createElement('div')
+		var properties = {
+			'class': 'tooltip',
+			'id': 'ThreadArcsTooltip'
+		}
+		for(var key in properties){
+			tooltip.setAttribute(key, properties[key])
+		}
+		document.getElementById(this.container).appendChild(tooltip)
+
+		var tooltipContent = document.createElement('div')
+		tooltipContent.setAttribute('id', 'ThreadArcsTooltipContent')
+		tooltip.appendChild(tooltipContent)
+
+		// Tooltip Line
+		var tooltipLine = document.createElement('div')
+		tooltipLine.setAttribute('id', 'ThreadArcsTooltipLine')
+		tooltip.appendChild(tooltipLine)
+
+		tooltip.onmouseenter = function(){
+			clearTimeout(this.tooltipTimeout)
+			clearTimeout(this.tooltipTimeout2)
+			clearTimeout(this.activeTimeout)
+			var i = parseInt(this.tooltip.getAttribute('data-index'))
+			this.activate(i)
+		}.bind(this)
+
+		tooltip.onmouseleave = function() {
+			this.hideTooltip()
+			this.resetHighlighting()
+		}.bind(this)
+
+		this.tooltip = tooltip;
+	}
+
+	return this.tooltip
+}
+
+/**
+ * Returns the content of the tooltip for a given node.
+ * @todo Make it possible to overwrite this method
+ * @param  {node} node object, the node
+ * @return {string}      The HTML
+ */
+ThreadArcs.prototype.getTooltipHTML = function(node) {
+	return '<a href="' + node['href'] + '" title="' + node['title'] + '">'
+			+'<span class="inline-author">' + node['author'] + '.</span> '
+			+ '<span class="title">' + node['title'] + '</span>'
+	   +'</a>'
+}
+
+/**
+ * Shows the tooltip corresponding to node i
+ * @param  {int} i index of the node
+ * @return {object}   this
+ */
+ThreadArcs.prototype.showTooltip = function(i) {
+	// Variables
+	var i = this.nodeIndices[i]
+	var tooltip = this.getTooltip()
+	var tooltipLine = document.getElementById('ThreadArcsTooltipLine')
+	var tooltipContent = document.getElementById('ThreadArcsTooltipContent')
+
+	// Prevent hiding
+	var c = tooltip.getAttribute('class')
+	tooltip.setAttribute('class', c.replace(' hidden', ''))
+	clearTimeout(this.tooltipTimeout)
+	clearTimeout(this.tooltipTimeout2)
+
+	// Update settings
+	var x = this.points[i].attr('cx')
+	var y = this.points[i].attr('cy') - 10
+	tooltip.setAttribute('data-index', i)
+	tooltip.setAttribute('style', 
+		  'left: '+x+'px;'
+		+ 'top:'+y+'px;'
+		+ 'margin-left:'+this.maxArcHeight+'px;')
+	tooltipLine.setAttribute('style', 'width:'+this.maxArcHeight+'px')
+	tooltipContent.innerHTML = this.getTooltipHTML(this.nodes[i])
+
+	return this
+}
+
+
+/**
+ * Hides the tooltip
+ * @return {object} this
+ */
+ThreadArcs.prototype.hideTooltip = function() {
+	
+	this.tooltipTimeout  = setTimeout(function() {
+		var s = this.tooltip.getAttribute('style')
+
+		if(s.indexOf('opacity:0;') == -1) {
+			this.tooltip.setAttribute('style', s + 'opacity:0;')
+		}
+
+		this.tooltipTimeout2 = setTimeout(function() {
+			var c = this.tooltip.getAttribute('class')
+			if(c.indexOf('hidden') == -1) {
+				this.tooltip.setAttribute('class', c + ' hidden')
+			}
+		}.bind(this), 600)
+
+	}.bind(this), 600)
+
+	return this
+}
 
 
 /** 
