@@ -4,10 +4,8 @@
     <title>Thread Arcs Demo</title>
     <script type="text/javascript" src="raphael.js"></script>
     <script type="text/javascript" src="ThreadArcs.js"></script>
-    <link href="css/ThreadArcs.css" type="text/css" rel="stylesheet" />
-    <style type="text/css">
-        body{ padding: 20px;}
-    </style>
+    <link href="ThreadArcs.css" type="text/css" rel="stylesheet" />
+    <link href="omslag.css" type="text/css" rel="stylesheet" />
     <script type="text/javascript">
     window.onload = function() {
         
@@ -29,10 +27,10 @@
 
         options = {
             'nodes': nodes,
-            'maxArcHeight': 80,
-            'space': 20,
+            'maxArcHeight': 60,
+            'space': 25,
             'lambda': 2 / 3,
-            'orientation': 'vertical'
+            'orientation': 'horizontal'
         }
 
         TA = ThreadArcs('canvas_container', invConnList, options)
@@ -40,8 +38,8 @@
         TA.draw()
         TA.activate(2)
 
-        // TA2 = ThreadArcs('canvas_container2', articles, connList, options)
-        // TA2.sort(2).draw()
+        TA2 = ThreadArcs('canvas_container2', invConnList, options)
+        TA2.sort(2).draw()
 
         // TA3 = ThreadArcs('canvas_container3', articles, connList, options)
         // TA3.sort([9, 8, 7, 6, 5, 4, 3, 2, 1, 0]).draw()
@@ -51,7 +49,7 @@
 
 <body>
     <div id="canvas_container" class="ThreadArcsContainer"></div>
-    <div id="canvas_container2"></div>
+    <div style="margin-top:100px;" id="canvas_container2"></div>
     <div id="canvas_container3"></div>
 </body>
 

@@ -1,0 +1,115 @@
+.point,
+.arc {
+	transition: all 600ms ease-out;
+}
+
+.point {
+	cursor: pointer;
+}
+
+.arc {
+	stroke-width: 1px;
+	fill: transparent;
+}
+
+.ThreadArcsContainer {
+	position: relative;
+	z-index: 1;
+}
+
+/** Tooltip styles */
+.ThreadArcsTooltip {
+	position: absolute;
+	z-index: -1;
+	opacity: 1;
+	transition: all 400ms ease-out;
+	transition: opacity 300ms ease-in;
+
+	margin-top: -15px; /** Matches .ThreadArcsTooltipLine.top **/
+}
+
+.ThreadArcsTooltipLine {
+	position: absolute;
+	right: 100%;
+	display: block;
+	height: 1px;
+	background: rgba(0,0,0,0.3);
+
+	top: 15px;
+}
+
+.horizontal .ThreadArcsTooltipLine {
+	width: 1px;
+	bottom: 100%;
+	top:auto;
+
+	left: 30px; /* See next */
+}
+
+.horizontal .ThreadArcsTooltip {
+	margin-left: -30px;
+}
+
+
+.ThreadArcsTooltip.hidden {
+	display: none;
+}
+
+
+
+/*********************************/
+
+
+
+.point:hover,
+.point.hover,
+.point:active {
+	/* ... */
+}
+
+.point.highlight {
+	/* ... */
+}
+
+/* General styles for highlighted arcs */
+.arc.depth-0, 
+.arc.depth-1,
+.arc.depth-2,
+.arc.depth-3,
+.arc.depth-4,
+.arc.depth-5 {
+	/* .. */
+}
+
+.arc.depth-m0, 
+.arc.depth-m1,
+.arc.depth-m2,
+.arc.depth-m3,
+.arc.depth-m4,
+.arc.depth-m5 {
+	/* ... */
+}
+
+/* Predecessors */
+.point.depth-m2 { }
+.arc.depth-m2 { }
+
+.point.depth-m1 { }
+.arc.depth-m1 { }
+
+.point.depth-m0 { }
+.arc.depth-m0 { }
+
+/* Descendants */
+.point.depth-0 { }
+.arc.depth-0 { }
+
+.point.depth-1 { }
+.arc.depth-1 { }
+
+.point.depth-2 { }
+.arc.depth-2 { }
+
+/* And so on... */
+
+

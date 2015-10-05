@@ -2,6 +2,7 @@
  * ThreadArcs Class by Bas Cornelissen
  */
 
+var ThreadArcCounter = 0;
 
 /**
  * ThreadArcs class
@@ -14,54 +15,66 @@
  * @param {array} options
  */
 var ThreadArcs = function(container, invConnList, options)  {
-	options || (options={})
+	options || (options={});
 	
 	// Fix binding
 	if (!(this instanceof ThreadArcs)) {
 		return new ThreadArcs(container, invConnList, options);
 		
 	} else {
-		this.container 		 = container
-	    this.invConnList 	 = invConnList
-	    this.connList 	 	 = this.invertConnList(invConnList)
-	    this.N 				 = this.invConnList.length
-	    this.nodes           = (options['nodes'] || this.range(this.N-1))
-		this.nodeIndices     = this.range(this.N-1)
-		this.points			 = []
-		this.arcs 			 = []
-		this.active 		 = []
+		ThreadArcCounter 	+= 1;
+		this.id 			 = ThreadArcCounter;
 
-		this.space			 = (options['space'] || 40)
-		this.maxArcHeight	 = (options['maxArcHeight'] || 100)
-		this.padding		 = (options['padding'] || this.space/2)
-		this.lambda			 = (options['lambda'] || 1/2)
-		this.radius 		 = (options['radius'] || 5)
-		this.orientation	 = (options['orientation'] || 'horizontal')
-		this.axisPos		 = (options['axisPos'] || this.maxArcHeight)
-		this.width 			 = this.space * (this.N - 1) + 2 * this.padding
-		this.height 	 	 = (options['size'] || this.maxArcHeight * 2)
+		this.container 		 = container;
+		this.addClass(document.getElementById(container), 'ThreadArcsContainer');
+	    this.invConnList 	 = invConnList;
+	    this.connList 	 	 = this.invertConnList(invConnList);
+	    this.N 				 = this.invConnList.length;
+	    this.nodes           = (options['nodes'] || this.range(this.N-1));
+		this.nodeIndices     = this.range(this.N-1);
+		this.points			 = [];
+		this.arcs 			 = [];
+		this.active 		 = [];
 
+		this.space			 = (options['space'] || 40);
+		this.maxArcHeight	 = (options['maxArcHeight'] || 100);
+		this.padding		 = (options['padding'] || this.space/2);
+		this.lambda			 = (options['lambda'] || 1/2);
+		this.radius 		 = (options['radius'] || 5);
+		this.axisPos		 = (options['axisPos'] || this.maxArcHeight);
+		this.width 			 = this.space * (this.N - 1) + 2 * this.padding;
+		this.height 	 	 = (options['size'] || this.maxArcHeight * 2);
+		
+		this.orientation	 = (options['orientation'] || 'horizontal');
 		if(this.orientation == 'vertical'){	
-			this.width 		= this.height
-			this.height 	= this.space * (this.N - 1) + 2 * this.padding
+			this.width 		= this.height;
+			this.height 	= this.space * (this.N - 1) + 2 * this.padding;
 		}
+		if(this.orientation == 'vertical'){
+			this.addClass(document.getElementById(this.container), 'vertical');
+		} else {
+			this.addClass(document.getElementById(this.container), 'horizontal');
+		}
+
+		// Tooltip
+		this.disableTooltip	 = (options['disableTooltip'] || false);
 		
 		// Maximum length
 		arcLengths = []
 		for(i=0; i<this.N; i++){
 			for(j = 0; j < this.connList[i].length; j++) {
-				arcLengths.push( Math.abs(this.connList[i][j] - i) )
+				arcLengths.push( Math.abs(this.connList[i][j] - i) );
 			}
 		}
-		this.maxArcLength 	= Math.max.apply(null, arcLengths) * this.space
+		this.maxArcLength 	= Math.max.apply(null, arcLengths) * this.space;
 		
 		// Depths and children
-		this.depths 		= this.getDepths(this.invConnList)
+		this.depths 		= this.getDepths(this.invConnList);
 
 		// Make paper
 		this.paper = new Raphael(
 			document.getElementById(this.container), 
-			this.width, this.height, 0, 0)
+			this.width, this.height, 0, 0);
 	}
 }
 
@@ -72,18 +85,18 @@ var ThreadArcs = function(container, invConnList, options)  {
  */
 ThreadArcs.prototype.invertConnList = function(connList){
 	N = connList.length;
-	invConnList = []
+	invConnList = [];
 	for(i=0; i<N; i++) {
-		invConnList.push([])
+		invConnList.push([]);
 	}
 
 	connList.forEach(function(connections, i){
 		connections.forEach(function(j){
-			invConnList[Math.abs(j)].push(i)
+			invConnList[Math.abs(j)].push(i);
 		}) 
 	})
 
-	return invConnList
+	return invConnList;
 }
 
 /**
@@ -99,18 +112,18 @@ ThreadArcs.prototype.invertConnList = function(connList){
 ThreadArcs.prototype.getPredecessorsDepths = function(i, depths, invConnList){
 	// Only enter recursion if necessary
 	if(depths.indexOf(i) == -1) {
-		var parentDepths = []
+		var parentDepths = [];
 		invConnList[i].forEach(function(j){
-			depths = this.getPredecessorsDepths(j, depths, invConnList)
-			parentDepths.push(depths[j])
-		}.bind(this))
+			depths = this.getPredecessorsDepths(j, depths, invConnList);
+			parentDepths.push(depths[j]);
+		}.bind(this));
 		if(parentDepths.length == 0) {
-			depths[i] = 0
+			depths[i] = 0;
 		} else {
-			depths[i] = Math.min.apply(null, parentDepths) + 1 
+			depths[i] = Math.min.apply(null, parentDepths) + 1;
 		}
 	}
-	return depths
+	return depths;
 }
 
 /**
@@ -124,14 +137,14 @@ ThreadArcs.prototype.getPredecessorsDepths = function(i, depths, invConnList){
 ThreadArcs.prototype.getDepths = function(invConnList) {
 	var depths = []
 	for(i=0; i<invConnList.length; i++) { 
-		depths.push(undefined)
+		depths.push(undefined);
 	}
 
 	while( depths.indexOf(undefined) != -1 ) {
-		i = depths.indexOf(undefined)
-		depths = this.getPredecessorsDepths(i, depths, invConnList)
+		i = depths.indexOf(undefined);
+		depths = this.getPredecessorsDepths(i, depths, invConnList);
 	}
-	return depths
+	return depths;
 }
 
 
@@ -142,9 +155,9 @@ ThreadArcs.prototype.getDepths = function(invConnList) {
  */
 ThreadArcs.prototype.xy = function(pos) {
 	if(this.orientation == 'horizontal') { 
-		return [pos, this.axisPos]
+		return [pos, this.axisPos];
 	} else {
-		return [this.axisPos, pos]
+		return [this.axisPos, pos];
 	}
 }
 
@@ -155,32 +168,31 @@ ThreadArcs.prototype.xy = function(pos) {
  */
 ThreadArcs.prototype.drawPoint = function(pos) {
 	
-	xy = this.xy(pos)
-	var p = this.paper.circle(xy[0], xy[1], this.radius)
-	p.addClass('point p' + (this.points.length + 1))
-	p._pos = pos
-	p._arcsOut = []
-	p._arcsIn = []
-	p._relDepth = this.N * 2 // just large
+	xy = this.xy(pos);
+	var p = this.paper.circle(xy[0], xy[1], this.radius);
+	p.addClass('point p' + (this.points.length + 1));
+	p._pos = pos;
+	p._arcsOut = [];
+	p._arcsIn = [];
+	p._relDepth = this.N * 2; // just large
 
 	// Hover
 	p.hover(function(e, a){
 		if(this.active.length > 0) {
-			clearTimeout(this.activeTimeout) 
-			this.resetHighlighting()	
+			clearTimeout(this.activeTimeout);
+			this.resetHighlighting();
 		}
-		this.highlight(this.points.indexOf(p))
-		this.showTooltip(this.points.indexOf(p))
+		this.highlight(this.points.indexOf(p));
+		this.showTooltip(this.points.indexOf(p));
 		
 	}.bind(this), function(){
-		this.resetHighlighting()
-		this.activeTimeout = setTimeout(this.showActive.bind(this), 300)
-		this.hideTooltip()
-
-	}.bind(this))
+		this.resetHighlighting();
+		this.activeTimeout = setTimeout(this.showActive.bind(this), 300);
+		this.hideTooltip();
+	}.bind(this));
 	
-	this.points.push(p)
-	return this
+	this.points.push(p);
+	return this;
 }
 
 /**
@@ -191,30 +203,30 @@ ThreadArcs.prototype.drawPoint = function(pos) {
  * @return {string}      svg path
  */
 ThreadArcs.prototype.getArcPath = function(posA, posB, dir) {
-	dir || (dir = 1)
-	var ax = this.axisPos
+	dir || (dir = 1);
+	var ax = this.axisPos;
 	
-	var relArcLength = Math.abs(posB - posA) / this.maxArcLength
-	var H = Math.pow(relArcLength, this.lambda) * this.maxArcHeight
-	H = ax + dir * H
-	var d = dir * this.radius / 2 // small offset from point
+	var relArcLength = Math.abs(posB - posA) / this.maxArcLength;
+	var H = Math.pow(relArcLength, this.lambda) * this.maxArcHeight;
+	H = ax + dir * H;
+	var d = dir * this.radius / 2; // small offset from point
 	
 	if(this.orientation == 'vertical') {
 		path =	  'M' + (ax+d) +' '+ posA +' '
 				+ 'C' + H +' '+ posA +' '
 					  + H +' '+ posB +' '
-					  + (ax+d) +' '+ posB
+					  + (ax+d) +' '+ posB;
 	}
 
 	else {
 		path =    'M' + posA +' '+ (ax+d) +' '
 				+ 'C' + posA +' '+ H +' '
 					  + posB +' '+ H +' '
-					  + posB +' '+ (ax+d)
+					  + posB +' '+ (ax+d);
 
 	}
 
-	return path
+	return path;
 }
 
 /** 
@@ -226,21 +238,21 @@ ThreadArcs.prototype.getArcPath = function(posA, posB, dir) {
  */
 ThreadArcs.prototype.drawArc = function(i, j, dir) {
 	
-	var A = this.points[i]
-	var B = this.points[j]
-	var	path = this.getArcPath(A._pos, B._pos, dir)
-	var arc = this.paper.path(path)
+	var A = this.points[i];
+	var B = this.points[j];
+	var	path = this.getArcPath(A._pos, B._pos, dir);
+	var arc = this.paper.path(path);
 
-	arc.addClass('arc arc-p' + i +' arc-p' + j)
+	arc.addClass('arc arc-p' + i +' arc-p' + j);
 
-	arc._from = i
-	arc._to = j
-	arc._dir = dir
-	arc._relDepth = this.N*2
-	A._arcsOut.push(arc)
-	B._arcsIn.push(arc)
-	this.arcs.push(arc)
-	return this
+	arc._from = i;
+	arc._to = j;
+	arc._dir = dir;
+	arc._relDepth = this.N*2;
+	A._arcsOut.push(arc);
+	B._arcsIn.push(arc);
+	this.arcs.push(arc);
+	return this;
 }
 
 /** 
@@ -251,24 +263,24 @@ ThreadArcs.prototype.draw = function() {
 	
 	// Draw all nodes
 	for( i = 0; i < this.N; i++ ){
-		this.drawPoint(this.padding + i * this.space, this.nodes[i])
+		this.drawPoint(this.padding + i * this.space, this.nodes[i]);
 	}
 
 	// Draw all arcs
 	for( i = 0; i < this.N; i++ ) {
 		for(k = 0; k < this.connList[i].length; k++) {
-			var j = this.connList[i][k]
-			this.drawArc(i, Math.abs(j), Math.sign(j))
+			var j = this.connList[i][k];
+			this.drawArc(i, Math.abs(j), Math.sign(j));
 		}
 	}
 
 	// Move all points to the front
 	for( i = 0; i < this.N; i++ ){
-		el = this.points[i].node
+		el = this.points[i].node;
 		el.parentNode.appendChild(el);
 	}
 
-	return this
+	return this;
 }
 
 /**
@@ -281,17 +293,17 @@ ThreadArcs.prototype.draw = function() {
 ThreadArcs.prototype.getSortedNodes1 = function() {
 	
 	// Initializing
-	var indices = this.range(this.N - 1)
-	var num_children = this.connList.map(function(i){ return i.length })
+	var indices = this.range(this.N - 1);
+	var num_children = this.connList.map(function(i){ return i.length });
 	
 	// Sort and return
 	indices = indices.sort(function (i,j) {
-		return (this.depths[i] > this.depths[j]) 
-				|| (this.depths[i] == this.depths[j]) 
-		 		    && (num_children[i] < num_children[j])
-	}.bind(this))
+		return (this.depths[i] > this.depths[j])
+				|| (this.depths[i] == this.depths[j])
+		 		    && (num_children[i] < num_children[j]);
+	}.bind(this));
 
-	return indices
+	return indices;
 }
 
 /**
@@ -301,16 +313,16 @@ ThreadArcs.prototype.getSortedNodes1 = function() {
  */
 ThreadArcs.prototype.getSortedNodes2 = function() {
 
-	indices = []
+	indices = [];
 	for(i=0; i<this.N; i++) {
 		if(this.depths[i] == 0){
-			indices.unshift(i)
+			indices.unshift(i);
 		} else {
-			indices.push(i)
+			indices.push(i);
 		}
 	}
 
-	return indices
+	return indices;
 };
 
 /**
@@ -332,43 +344,43 @@ ThreadArcs.prototype.sort = function(method) {
 	// Sort
 	// should return only the new indices, not the nodes themselves!
 	if(typeof(method) == 'object') {
-		var sortedNodesIndices = []
-		nodes = this.nodes
+		var sortedNodesIndices = [];
+		nodes = this.nodes;
 		method.forEach(function(i){
-			sortedNodesIndices.push(nodes[i])
+			sortedNodesIndices.push(nodes[i]);
 		})
 
 	} else if(method == 1) {
-		var sortedNodesIndices = this.getSortedNodes1()
+		var sortedNodesIndices = this.getSortedNodes1();
 	} else {
-		var sortedNodesIndices = this.getSortedNodes2()
+		var sortedNodesIndices = this.getSortedNodes2();
 	}	
 
 	// Sort the nodes
-	var sortedNodes = []
+	var sortedNodes = [];
 	sortedNodesIndices.forEach(function(i){
-		sortedNodes.push(this.nodes[i])
-	}.bind(this))
+		sortedNodes.push(this.nodes[i]);
+	}.bind(this));
 	
 	// Update connection list
-	sortedConnList = []
+	sortedConnList = [];
 	sortedNodesIndices.forEach(function(i){
-		connections = this.connList[i]
-		dir = (this.depths[Math.abs(i)] % 2 - .5) * (2)
+		connections = this.connList[i];
+		dir = (this.depths[Math.abs(i)] % 2 - .5) * (2);
 		connections = connections.map(function(j){
-			return dir * sortedNodesIndices.indexOf(Math.abs(j))
+			return dir * sortedNodesIndices.indexOf(Math.abs(j));
 		})
-		sortedConnList.push(connections)
-	}.bind(this))
+		sortedConnList.push(connections);
+	}.bind(this));
 
 	// Update class variables and return
 	// Also store a 'translation' (nodeIndices)
 	//  so that we can access nodes by their original ids
-	this.nodeIndices 	= sortedNodesIndices
-	this.nodes 			= sortedNodes
-	this.connList 		= sortedConnList
-	this.depths 		= this.getDepths(this.invConnList)
-	return this
+	this.nodeIndices 	= sortedNodesIndices;
+	this.nodes 			= sortedNodes;
+	this.connList 		= sortedConnList;
+	this.depths 		= this.getDepths(this.invConnList);
+	return this;
 }
 
 /**
@@ -377,24 +389,24 @@ ThreadArcs.prototype.sort = function(method) {
  * @param {int} depth (only neede for recursion)
  */
 ThreadArcs.prototype.decorateDescendants = function(i, depth) {
-	depth 		|| (depth=0)
+	depth 		|| (depth=0);
 
 	this.points[i]._arcsOut.forEach(function(arc){
 		
 		// Update css classes 
 		// if the depth is lower than the previous rel depth
 		if(arc._relDepth > depth) {
-			arc.removeClass('depth-'+arc._relDepth)
-			arc._relDepth = depth
-			arc.addClass('depth-'+arc._relDepth)
+			arc.removeClass('depth-'+arc._relDepth);
+			arc._relDepth = depth;
+			arc.addClass('depth-'+arc._relDepth);
 	
-			var to = this.points[arc._to]
-			to.removeClass('depth-'+to._relDepth)
-			to._relDepth = depth
-			to.addClass('depth-'+to._relDepth)
+			var to = this.points[arc._to];
+			to.removeClass('depth-'+to._relDepth);
+			to._relDepth = depth;
+			to.addClass('depth-'+to._relDepth);
 		}
 		
-		this.decorateDescendants(arc._to, depth + 1)
+		this.decorateDescendants(arc._to, depth + 1);
 	}.bind(this))
 }
 
@@ -405,25 +417,25 @@ ThreadArcs.prototype.decorateDescendants = function(i, depth) {
  * @param {depth} depth (for recursion only)
  */
 ThreadArcs.prototype.decoratePredecessors = function(i, depth) {
-	depth 		|| (depth = 0)
+	depth 		|| (depth = 0);
 
 
 	this.points[i]._arcsIn.forEach(function(arc){
 		// Update css classes 
 		// if the depth is lower than the previous rel depth
 		if(arc._relDepth > depth) {
-			arc.removeClass('depth-m'+arc._relDepth)
-			arc._relDepth = depth
-			arc.addClass('depth-m'+arc._relDepth)
+			arc.removeClass('depth-m'+arc._relDepth);
+			arc._relDepth = depth;
+			arc.addClass('depth-m'+arc._relDepth);
 	
-			var from = this.points[arc._from]
-			from.removeClass('depth-m'+from._relDepth)
-			from._relDepth = depth
-			from.addClass('depth-m'+from._relDepth)
+			var from = this.points[arc._from];
+			from.removeClass('depth-m'+from._relDepth);
+			from._relDepth = depth;
+			from.addClass('depth-m'+from._relDepth);
 		}
 		
-		this.decoratePredecessors(arc._from, depth + 1)
-	}.bind(this))
+		this.decoratePredecessors(arc._from, depth + 1);
+	}.bind(this));
 }
 
 /**
@@ -432,10 +444,10 @@ ThreadArcs.prototype.decoratePredecessors = function(i, depth) {
  * @return {object} this (ThreadArcs Object)
  */
 ThreadArcs.prototype.highlight = function(i) {
-	this.points[i].addClass('highlight')
-	this.decorateDescendants(i)
-	this.decoratePredecessors(i)
-	return this
+	this.points[i].addClass('highlight');
+	this.decorateDescendants(i);
+	this.decoratePredecessors(i);
+	return this;
 };
 
 /**
@@ -444,18 +456,18 @@ ThreadArcs.prototype.highlight = function(i) {
  */
 ThreadArcs.prototype.resetHighlighting = function(){
 	this.arcs.forEach(function(arc) {
-		arc.removeClass('depth-'+arc._relDepth)
-		arc.removeClass('depth-m'+arc._relDepth)
-		arc._relDepth = this.N*2
+		arc.removeClass('depth-'+arc._relDepth);
+		arc.removeClass('depth-m'+arc._relDepth);
+		arc._relDepth = this.N*2;
 	})
 
 	this.points.forEach(function(p) {
-		p.removeClass('highlight')
-		p.removeClass('depth-'+p._relDepth)
-		p.removeClass('depth-m'+p._relDepth)
-		p._relDepth = this.N*2
+		p.removeClass('highlight');
+		p.removeClass('depth-'+p._relDepth);
+		p.removeClass('depth-m'+p._relDepth);
+		p._relDepth = this.N*2;
 	})
-	return this
+	return this;
 }
 
 /**
@@ -480,16 +492,16 @@ ThreadArcs.prototype.activate = function(i) {
  * @return {object}   this (ThreadArcs object)
  */
 ThreadArcs.prototype.deactivate = function(i) {
-	this.points[i].removeClass('active')
+	this.points[i].removeClass('active');
 
 	// Remove from active elements
-	var index = this.active.indexOf(i)
+	var index = this.active.indexOf(i);
 	if (index > -1) {
  	   this.active.splice(index, 1);
 	}
 
-	this.resetHighlighting().showActive()
-	return this
+	this.resetHighlighting().showActive();
+	return this;
 }
 
 
@@ -499,9 +511,9 @@ ThreadArcs.prototype.deactivate = function(i) {
  */
 ThreadArcs.prototype.showActive = function() {
 	this.active.forEach(function(i){
-		this.activate(i)
-	}.bind(this))
-	return this
+		this.activate(i);
+	}.bind(this));
+	return this;
 }
 
 
@@ -512,44 +524,42 @@ ThreadArcs.prototype.showActive = function() {
 ThreadArcs.prototype.getTooltip = function() {
 
 	if(this.tooltip == undefined) {
-		var tooltip = document.createElement('div')
-		var properties = {
-			'class': 'tooltip',
-			'id': 'ThreadArcsTooltip'
-		}
-		for(var key in properties){
-			tooltip.setAttribute(key, properties[key])
-		}
-		document.getElementById(this.container).appendChild(tooltip)
+		var tooltip = document.createElement('div');
+		tooltip.setAttribute('id', 'ThreadArcsTooltip-'+this.id);
+		tooltip.setAttribute('class', 'ThreadArcsTooltip');
+		document.getElementById(this.container).appendChild(tooltip);
 
-		var tooltipContent = document.createElement('div')
-		tooltipContent.setAttribute('id', 'ThreadArcsTooltipContent')
-		tooltip.appendChild(tooltipContent)
+		// Tooltip content
+		var tooltipContent = document.createElement('div');
+		tooltipContent.setAttribute('id', 'ThreadArcsTooltipContent-'+this.id);
+		tooltipContent.setAttribute('class', 'ThreadArcsTooltipContent');
+		tooltip.appendChild(tooltipContent);
 
 		// Tooltip Line
-		var tooltipLine = document.createElement('div')
-		tooltipLine.setAttribute('id', 'ThreadArcsTooltipLine')
-		tooltip.appendChild(tooltipLine)
-
-		tooltip.onmouseenter = function(){
-			clearTimeout(this.tooltipTimeout)
-			clearTimeout(this.tooltipTimeout2)
-			clearTimeout(this.activeTimeout)
-			var i = parseInt(this.tooltip.getAttribute('data-index'))
-			this.activate(i)
-		}.bind(this)
-
-		tooltip.onmouseleave = function() {
-			this.hideTooltip()
-			this.resetHighlighting()
-			var i = parseInt(this.tooltip.getAttribute('data-index'))
-			this.deactivate(i)
-		}.bind(this)
+		var tooltipLine = document.createElement('div');
+		tooltipLine.setAttribute('id', 'ThreadArcsTooltipLine-'+this.id);
+		tooltipLine.setAttribute('class', 'ThreadArcsTooltipLine');
+		tooltip.appendChild(tooltipLine);
 
 		this.tooltip = tooltip;
+
+		tooltip.onmouseenter = function(){
+			clearTimeout(this.tooltipTimeout);
+			clearTimeout(this.tooltipTimeout2);
+			clearTimeout(this.activeTimeout);
+			var i = parseInt(this.tooltip.getAttribute('data-index'));
+			this.activate(i);
+		}.bind(this);
+
+		tooltip.onmouseleave = function() {
+			this.hideTooltip();
+			this.resetHighlighting();
+			var i = parseInt(this.tooltip.getAttribute('data-index'));
+			this.deactivate(i);
+		}.bind(this);
 	}
 
-	return this.tooltip
+	return this.tooltip;
 }
 
 /**
@@ -562,7 +572,7 @@ ThreadArcs.prototype.getTooltipHTML = function(node) {
 	return '<a href="' + node['href'] + '" title="' + node['title'] + '">'
 			+'<span class="inline-author">' + node['author'] + '.</span> '
 			+ '<span class="title">' + node['title'] + '</span>'
-	   +'</a>'
+	   +'</a>';
 }
 
 /**
@@ -571,30 +581,42 @@ ThreadArcs.prototype.getTooltipHTML = function(node) {
  * @return {object}   this
  */
 ThreadArcs.prototype.showTooltip = function(i) {
+	if(this.disableTooltip == true) return false;
+
 	// Variables
-	// var i = this.nodeIndices[i]
-	var tooltip = this.getTooltip()
-	var tooltipLine = document.getElementById('ThreadArcsTooltipLine')
-	var tooltipContent = document.getElementById('ThreadArcsTooltipContent')
+	var tooltip = this.getTooltip();
+	var tooltipLine = document.getElementById('ThreadArcsTooltipLine-'+this.id);
+	var tooltipContent = document.getElementById('ThreadArcsTooltipContent-'+this.id);
 
 	// Prevent hiding
-	var c = tooltip.getAttribute('class')
-	tooltip.setAttribute('class', c.replace(' hidden', ''))
-	clearTimeout(this.tooltipTimeout)
-	clearTimeout(this.tooltipTimeout2)
+	this.removeClass(tooltip, 'hidden');
+	clearTimeout(this.tooltipTimeout);
+	clearTimeout(this.tooltipTimeout2);
 
 	// Update settings
-	var x = this.points[i].attr('cx')
-	var y = this.points[i].attr('cy') - 10
-	tooltip.setAttribute('data-index', i)
-	tooltip.setAttribute('style', 
-		  'left: '+x+'px;'
-		+ 'top:'+y+'px;'
-		+ 'margin-left:'+this.maxArcHeight+'px;')
-	tooltipLine.setAttribute('style', 'width:'+this.maxArcHeight+'px')
-	tooltipContent.innerHTML = this.getTooltipHTML(this.nodes[i])
+	var x = this.points[i].attr('cx');
+	var y = this.points[i].attr('cy');
+	tooltip.setAttribute('data-index', i);
+	
+	if(this.orientation == 'vertical') {
+		tooltip.setAttribute('style', 
+			  'left: '+x+'px;'
+			+ 'top:'+y+'px;'
+			+ 'margin-left:'+this.maxArcHeight+'px;');
+		tooltipLine.setAttribute('style', 'width:' + (this.maxArcHeight - this.radius/2) + 'px');
+		tooltipContent.innerHTML = this.getTooltipHTML(this.nodes[i]);
+	} else {
+		tooltipContent.innerHTML = this.getTooltipHTML(this.nodes[i]);
+		tooltip.setAttribute('style', 
+			  'left: '+x+'px;'
+			+ 'top:'+y+'px;'
+			+ 'margin-top:'+this.maxArcHeight+'px;');
+		tooltipLine.setAttribute('style', 'height:' + (this.maxArcHeight - this.radius/2) + 'px');
 
-	return this
+	}
+	
+
+	return this;
 }
 
 /**
@@ -602,34 +624,39 @@ ThreadArcs.prototype.showTooltip = function(i) {
  * @return {object} this
  */
 ThreadArcs.prototype.hideTooltip = function() {
-	
+	if(this.disableTooltip == true ) return false;
+
 	this.tooltipTimeout  = setTimeout(function() {
-		var s = this.tooltip.getAttribute('style')
+		var s = this.tooltip.getAttribute('style');
 
 		if(s.indexOf('opacity:0;') == -1) {
-			this.tooltip.setAttribute('style', s + 'opacity:0;')
+			this.tooltip.setAttribute('style', s + 'opacity:0;');
 		}
 
 		this.tooltipTimeout2 = setTimeout(function() {
-			var c = this.tooltip.getAttribute('class')
-			if(c.indexOf('hidden') == -1) {
-				this.tooltip.setAttribute('class', c + ' hidden')
-			}
-		}.bind(this), 600)
+			this.addClass(this.tooltip, 'hidden');
+		}.bind(this), 600);
 
-	}.bind(this), 600)
-
-//	this.showActive()
+	}.bind(this), 600);
 	
-	return this
+	return this;
 }
 
+/**
+ * Simple range function. Retuns the range
+ * [start, start+s, ..., stop-s, stop], with s the stepsize.
+ * Moreover, range(start) returns range(0, start)
+ * @param  {int} start starting value
+ * @param  {stop} stop  stop value
+ * @param  {step} step  stepsize
+ * @return {array}       range
+ */
 ThreadArcs.prototype.range = function(start, stop, step) {
 	if(stop == undefined & step == undefined){
-		return this.range(0, start)
+		return this.range(0, start);
 	}
 
-	start || (start = 0)
+	start || (start = 0);
     var a = [start];
     while (start < stop) {
         start += step || 1;
@@ -639,28 +666,30 @@ ThreadArcs.prototype.range = function(start, stop, step) {
 };
 
 /**
- * Do a function n times. The function receives the iteration number 
- * as the first argument. The function is bound to the class.
- * Note that the function is performed N times, so i runs from
- * 0 to N (excluding N)
- * @param  {function} fn   function to apply
- * @param {int} N number of times to apply function (default to this.N)
- * @param  {array}   args optional arguments to pass to the function
- * @return {array}        outputs
+ * Add class to element (HTML element, typically)
+ * @param {object} el
+ * @param {string} className
+ * @return {object} Element
  */
-ThreadArcs.prototype.doN = function(fn, N, args) {
-	args || (args = [])
-	N || (N = this.N)
-	args.unshift(undefined)
-
-	var result = []
-	for(i=0; i< N; i++) {
-		args[0] = i
-		result.push(fn.apply(this, args))
+ThreadArcs.prototype.addClass = function(el, className) {
+	origClass = el.getAttribute('class');
+	if(origClass == null || origClass.indexOf(className) == -1) {
+	    el.setAttribute("class", origClass + ' ' + className);
 	}
-	return result
+    return el;
 }
 
+/**
+ * Removes class from an (HTML) element
+ * @param  {object} el        
+ * @param  {string} className 
+ * @return {object}           Element
+ */
+ThreadArcs.prototype.removeClass = function(el, className) {
+	origClass = el.getAttribute('class');
+	el.setAttribute('class', origClass.replace(' ' + className, ''));
+	return el;
+}
 
 /** 
  * EXTEND RAPHAEL
@@ -672,7 +701,7 @@ ThreadArcs.prototype.doN = function(fn, N, args) {
  * @param {string} className
  */
 Raphael.el.addClass = function(className) {
-	origClass = this.node.getAttribute('class')
+	origClass = this.node.getAttribute('class');
 	if(origClass == null || origClass.indexOf(className) == -1) {
 	    this.node.setAttribute("class", origClass + ' ' + className);
 	}
@@ -685,17 +714,41 @@ Raphael.el.addClass = function(className) {
  * @return {object}           element
  */
 Raphael.el.removeClass = function(className) {
-	origClass = this.node.getAttribute('class')
-	this.node.setAttribute('class', origClass.replace(' ' + className, ''))
-	return this
+	origClass = this.node.getAttribute('class');
+	this.node.setAttribute('class', origClass.replace(' ' + className, ''));
+	return this;
 };
 
 
 function repeat(object, N) {
-	var repeated = []
+	var repeated = [];
 	for(i=0; i<N; i++){
-		repeated.push(object)
+		repeated.push(object);
 	}
-	return repeated
+	return repeated;
+}
+
+
+/**
+ * Do a function n times. The function receives the iteration number 
+ * as the first argument. The function is bound to the class.
+ * Note that the function is performed N times, so i runs from
+ * 0 to N (excluding N)
+ * @param  {function} fn   function to apply
+ * @param {int} N number of times to apply function (default to this.N)
+ * @param  {array}   args optional arguments to pass to the function
+ * @return {array}        outputs
+ */
+ThreadArcs.prototype.doN = function(fn, N, args) {
+	args || (args = []);
+	N || (N = this.N);
+	args.unshift(undefined);
+
+	var result = [];
+	for(i=0; i< N; i++) {
+		args[0] = i;
+		result.push(fn.apply(this, args));
+	}
+	return result;
 }
 
