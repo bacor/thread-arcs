@@ -24,24 +24,22 @@ var ThreadArcs = function(container, nodes, connList, options)  {
 		this.container 		 = container
 		this.nodes			 = nodes
 	    this.connList 		 = connList
-	    this.invConnList 	 = invertConnList(connList)
+	    this.invConnList 	 = this.invertConnList(connList)
 		this.points			 = []
 		this.N 				 = nodes.length
-		// this.arcs			 = repeat(repeat([], this.N), this.N)
 		this.arcs 			 = []
-		
+		this.nodeIndices     = this.range(0,this.N-1)
+		this.active 		 = []
+
 		this.space			 = (options['space'] || 40)
 		this.maxArcHeight	 = (options['maxArcHeight'] || 100)
 		this.padding		 = (options['padding'] || this.space/2)
 		this.lambda			 = (options['lambda'] || 1/2)
 		this.radius 		 = (options['radius'] || 5)
-
-		this.orientation	= (options['orientation'] || 'horizontal')
-		this.axisPos		= (options['axisPos'] || this.maxArcHeight)
-		this.width 			= this.space * (this.N - 1) + 2 * this.padding
-		this.height 		= (options['size'] || this.maxArcHeight * 2)
-		
-		this.active 		= []
+		this.orientation	 = (options['orientation'] || 'horizontal')
+		this.axisPos		 = (options['axisPos'] || this.maxArcHeight)
+		this.width 			 = this.space * (this.N - 1) + 2 * this.padding
+		this.height 	 	 = (options['size'] || this.maxArcHeight * 2)
 
 		if(this.orientation == 'vertical'){	
 			this.width 		= this.height
@@ -58,24 +56,84 @@ var ThreadArcs = function(container, nodes, connList, options)  {
 		this.maxArcLength 	= Math.max.apply(null, arcLengths) * this.space
 		
 		// Depths and children
-		this.depths 		= getDepths(this.invConnList)
-		var children 		= [];
-		var parents 		= [];
-		this.connList.forEach(function(connections, i){
-			children.push(connections.length)
-			parents.push(this.invConnList[i].length)
-		})
-		this.children 		= children
-		this.parents 		= parents
+		this.depths 		= this.getDepths(this.invConnList)
 
 		// Make paper
 		this.paper = new Raphael(
 			document.getElementById(this.container), 
-			this.width, this.height, 
-			0, 0
-		);
+			this.width, this.height, 0, 0)
 	}
 }
+
+/**
+ * Revert the direction of the graph described by the invConnList
+ * @param  {array} connList connection list
+ * @return {array}          inverted connection list
+ */
+ThreadArcs.prototype.invertConnList = function(connList){
+	N = connList.length;
+	invConnList = []
+	for(i=0; i<N; i++) {
+		invConnList.push([])
+	}
+
+	connList.forEach(function(connections, i){
+		connections.forEach(function(j){
+			invConnList[Math.abs(j)].push(i)
+		}) 
+	})
+
+	return invConnList
+}
+
+/**
+ * Recursively determines the depth of all ancestors of a given node
+ * in a directed acylic graph. The graph should be described by an
+ * inverted connection list L. That means that L[i] is a list of all
+ * _parent_ nodes of i.
+ * @param  {int} i         	   starting node
+ * @param  {array} depths      array of depths will be updated 
+ * @param  {array} invConnList inverted connection list
+ * @return {array}             array of updated weights
+ */
+ThreadArcs.prototype.getPredecessorsDepths = function(i, depths, invConnList){
+	// Only enter recursion if necessary
+	if(depths.indexOf(i) == -1) {
+		var parentDepths = []
+		invConnList[i].forEach(function(j){
+			depths = this.getPredecessorsDepths(j, depths, invConnList)
+			parentDepths.push(depths[j])
+		}.bind(this))
+		if(parentDepths.length == 0) {
+			depths[i] = 0
+		} else {
+			depths[i] = Math.min.apply(null, parentDepths) + 1 
+		}
+	}
+	return depths
+}
+
+/**
+ * Determines the depth of all points in a directed acyclic graph
+ * described by a connection list L. Here L[i] is an inverted list 
+ * with the indices of all parents.
+ * It returns a list D of depths (i.e. D[i] is the depth of node i)
+ * @param  {array} connList connection list
+ * @return {array}          depths
+ */
+ThreadArcs.prototype.getDepths = function(invConnList) {
+	var depths = []
+	for(i=0; i<invConnList.length; i++) { 
+		depths.push(undefined)
+	}
+
+	while( depths.indexOf(undefined) != -1 ) {
+		i = depths.indexOf(undefined)
+		depths = this.getPredecessorsDepths(i, depths, invConnList)
+	}
+	return depths
+}
+
 
 /**
  * Get coordinates from a position
@@ -100,7 +158,6 @@ ThreadArcs.prototype.drawPoint = function(pos) {
 	xy = this.xy(pos)
 	var p = this.paper.circle(xy[0], xy[1], this.radius)
 	p.addClass('point p' + (this.points.length + 1))
-	p._index = this.points.length + 1
 	p._pos = pos
 	p._arcsOut = []
 	p._arcsIn = []
@@ -112,11 +169,16 @@ ThreadArcs.prototype.drawPoint = function(pos) {
 			clearTimeout(this.activeTimeout) 
 			this.resetHighlighting()	
 		}
-		this.highlight(p._index - 1)
+		console.log(this.nodeIndices)
+		console.log(p)
+		console.log(this.points.indexOf(p))
+		this.highlight(this.points.indexOf(p))
+		this.showTooltip(this.points.indexOf(p))
 		
 	}.bind(this), function(){
 		this.resetHighlighting()
 		this.activeTimeout = setTimeout(this.showActive.bind(this), 300)
+		this.hideTooltip()
 
 	}.bind(this))
 	
@@ -202,7 +264,7 @@ ThreadArcs.prototype.draw = function() {
 			this.drawArc(i, Math.abs(j), Math.sign(j))
 		}
 	}
-	
+
 	// Move all points to the front
 	for( i = 0; i < this.N; i++ ){
 		el = this.points[i].node
@@ -222,16 +284,17 @@ ThreadArcs.prototype.draw = function() {
 ThreadArcs.prototype.getSortedNodes1 = function() {
 	
 	// Initializing
-	newNodes = []
-	for(i=0; i<this.N; i++ ){ newNodes.push(i) }
-	depths = this.depths; children = this.children;
+	var indices = this.range(this.N - 1)
+	var num_children = this.connList.map(function(i){ return i.length })
+	
 	// Sort and return
-	newNodes = newNodes.sort(function (i,j) {
-		return (depths[i] > depths[j]) 
-				|| (depths[i] == depths[j]) 
-		 		    && (children[i] < children[j])
-	})
-	return newNodes
+	indices = indices.sort(function (i,j) {
+		return (this.depths[i] > this.depths[j]) 
+				|| (this.depths[i] == this.depths[j]) 
+		 		    && (num_children[i] < num_children[j])
+	}.bind(this))
+
+	return indices
 }
 
 /**
@@ -241,16 +304,16 @@ ThreadArcs.prototype.getSortedNodes1 = function() {
  */
 ThreadArcs.prototype.getSortedNodes2 = function() {
 
-	newNodes = []
-	depths = this.depths
-	this.nodes.forEach(function(node, i){
-		if(depths[i] == 0){
-			newNodes.unshift(i)
+	indices = []
+	for(i=0; i<this.N; i++) {
+		if(this.depths[i] == 0){
+			indices.unshift(i)
 		} else {
-			newNodes.push(i)
+			indices.push(i)
 		}
-	})
-	return newNodes
+	}
+
+	return indices
 };
 
 /**
@@ -269,35 +332,47 @@ ThreadArcs.prototype.getSortedNodes2 = function() {
  * @return {object} this this
  */
 ThreadArcs.prototype.sort = function(method) {
-	
 	// Sort
+	// should return only the new indices, not the nodes themselves!
 	if(typeof(method) == 'object') {
-		sortedNodes = []
+		var sortedNodesIndices = []
 		nodes = this.nodes
 		method.forEach(function(i){
-			sortedNodes.push(nodes[i])
+			sortedNodesIndices.push(nodes[i])
 		})
 
 	} else if(method == 1) {
-		sortedNodes = this.getSortedNodes1()
+		var sortedNodesIndices = this.getSortedNodes1()
 	} else {
-		sortedNodes = this.getSortedNodes2()
-	}
+		var sortedNodesIndices = this.getSortedNodes2()
+	}	
+
+	// Sort the nodes
+	var sortedNodes = []
+	sortedNodesIndices.forEach(function(i){
+		sortedNodes.push(this.nodes[i])
+	}.bind(this))
 	
 	// Update connection list
 	sortedConnList = []
-	sortedNodes.forEach(function(i, k){
+	sortedNodesIndices.forEach(function(i){
 		connections = this.connList[i]
 		dir = (this.depths[Math.abs(i)] % 2 - .5) * (2)
 		connections = connections.map(function(j){
-			return dir * sortedNodes.indexOf(Math.abs(j))
+			return dir * sortedNodesIndices.indexOf(Math.abs(j))
 		})
 		sortedConnList.push(connections)
-	})
+	}.bind(this))
 
 	// Update class variables and return
-	this.nodes = sortedNodes
-	this.connList = sortedConnList
+	// Also store a 'translation' (nodeIndices)
+	//  so that we can access nodes by their original ids
+	console.log(this.nodes)
+	this.nodeIndices 	= sortedNodesIndices
+	this.nodes 			= sortedNodes
+	console.log(this.nodes)
+	this.connList 		= sortedConnList
+	this.depths 		= this.getDepths(this.invConnList)
 	return this
 }
 
@@ -306,7 +381,7 @@ ThreadArcs.prototype.sort = function(method) {
  * @param {int} i     index of node
  * @param {int} depth (only neede for recursion)
  */
-ThreadArcs.prototype.addDepthToDescendants = function(i, depth) {
+ThreadArcs.prototype.decorateDescendants = function(i, depth) {
 	depth 		|| (depth=0)
 
 	this.points[i]._arcsOut.forEach(function(arc){
@@ -324,7 +399,7 @@ ThreadArcs.prototype.addDepthToDescendants = function(i, depth) {
 			to.addClass('depth-'+to._relDepth)
 		}
 		
-		this.addDepthToDescendants(arc._to, depth + 1)
+		this.decorateDescendants(arc._to, depth + 1)
 	}.bind(this))
 }
 
@@ -334,7 +409,7 @@ ThreadArcs.prototype.addDepthToDescendants = function(i, depth) {
  * @param {int} i     index of node
  * @param {depth} depth (for recursion only)
  */
-ThreadArcs.prototype.addDepthToPredecessors = function(i, depth) {
+ThreadArcs.prototype.decoratePredecessors = function(i, depth) {
 	depth 		|| (depth = 0)
 
 
@@ -352,7 +427,7 @@ ThreadArcs.prototype.addDepthToPredecessors = function(i, depth) {
 			from.addClass('depth-m'+from._relDepth)
 		}
 		
-		this.addDepthToPredecessors(arc._from, depth + 1)
+		this.decoratePredecessors(arc._from, depth + 1)
 	}.bind(this))
 }
 
@@ -363,8 +438,8 @@ ThreadArcs.prototype.addDepthToPredecessors = function(i, depth) {
  */
 ThreadArcs.prototype.highlight = function(i) {
 	this.points[i].addClass('highlight')
-	this.addDepthToDescendants(i)
-	this.addDepthToPredecessors(i)
+	this.decorateDescendants(i)
+	this.decoratePredecessors(i)
 	return this
 };
 
@@ -435,6 +510,159 @@ ThreadArcs.prototype.showActive = function() {
 }
 
 
+/**
+ * Creates the tooltip or returns the object if it exists
+ * @return {object} HTML Tooltip element
+ */
+ThreadArcs.prototype.getTooltip = function() {
+
+	if(this.tooltip == undefined) {
+		var tooltip = document.createElement('div')
+		var properties = {
+			'class': 'tooltip',
+			'id': 'ThreadArcsTooltip'
+		}
+		for(var key in properties){
+			tooltip.setAttribute(key, properties[key])
+		}
+		document.getElementById(this.container).appendChild(tooltip)
+
+		var tooltipContent = document.createElement('div')
+		tooltipContent.setAttribute('id', 'ThreadArcsTooltipContent')
+		tooltip.appendChild(tooltipContent)
+
+		// Tooltip Line
+		var tooltipLine = document.createElement('div')
+		tooltipLine.setAttribute('id', 'ThreadArcsTooltipLine')
+		tooltip.appendChild(tooltipLine)
+
+		tooltip.onmouseenter = function(){
+			clearTimeout(this.tooltipTimeout)
+			clearTimeout(this.tooltipTimeout2)
+			clearTimeout(this.activeTimeout)
+			var i = parseInt(this.tooltip.getAttribute('data-index'))
+			this.activate(i)
+		}.bind(this)
+
+		tooltip.onmouseleave = function() {
+			this.hideTooltip()
+			this.resetHighlighting()
+		}.bind(this)
+
+		this.tooltip = tooltip;
+	}
+
+	return this.tooltip
+}
+
+/**
+ * Returns the content of the tooltip for a given node.
+ * @todo Make it possible to overwrite this method
+ * @param  {node} node object, the node
+ * @return {string}      The HTML
+ */
+ThreadArcs.prototype.getTooltipHTML = function(node) {
+	return '<a href="' + node['href'] + '" title="' + node['title'] + '">'
+			+'<span class="inline-author">' + node['author'] + '.</span> '
+			+ '<span class="title">' + node['title'] + '</span>'
+	   +'</a>'
+}
+
+/**
+ * Shows the tooltip corresponding to node i
+ * @param  {int} i index of the node
+ * @return {object}   this
+ */
+ThreadArcs.prototype.showTooltip = function(i) {
+	// Variables
+	// var i = this.nodeIndices[i]
+	var tooltip = this.getTooltip()
+	var tooltipLine = document.getElementById('ThreadArcsTooltipLine')
+	var tooltipContent = document.getElementById('ThreadArcsTooltipContent')
+
+	// Prevent hiding
+	var c = tooltip.getAttribute('class')
+	tooltip.setAttribute('class', c.replace(' hidden', ''))
+	clearTimeout(this.tooltipTimeout)
+	clearTimeout(this.tooltipTimeout2)
+
+	// Update settings
+	var x = this.points[i].attr('cx')
+	var y = this.points[i].attr('cy') - 10
+	tooltip.setAttribute('data-index', i)
+	tooltip.setAttribute('style', 
+		  'left: '+x+'px;'
+		+ 'top:'+y+'px;'
+		+ 'margin-left:'+this.maxArcHeight+'px;')
+	tooltipLine.setAttribute('style', 'width:'+this.maxArcHeight+'px')
+	tooltipContent.innerHTML = this.getTooltipHTML(this.nodes[i])
+
+	return this
+}
+
+
+/**
+ * Hides the tooltip
+ * @return {object} this
+ */
+ThreadArcs.prototype.hideTooltip = function() {
+	
+	this.tooltipTimeout  = setTimeout(function() {
+		var s = this.tooltip.getAttribute('style')
+
+		if(s.indexOf('opacity:0;') == -1) {
+			this.tooltip.setAttribute('style', s + 'opacity:0;')
+		}
+
+		this.tooltipTimeout2 = setTimeout(function() {
+			var c = this.tooltip.getAttribute('class')
+			if(c.indexOf('hidden') == -1) {
+				this.tooltip.setAttribute('class', c + ' hidden')
+			}
+		}.bind(this), 600)
+
+	}.bind(this), 600)
+
+	return this
+}
+
+ThreadArcs.prototype.range = function(start, stop, step) {
+	if(stop == undefined & step == undefined){
+		return this.range(0, start)
+	}
+
+	start || (start = 0)
+    var a = [start];
+    while (start < stop) {
+        start += step || 1;
+        a.push(start);
+    }
+    return a;
+};
+
+/**
+ * Do a function n times. The function receives the iteration number 
+ * as the first argument. The function is bound to the class.
+ * Note that the function is performed N times, so i runs from
+ * 0 to N (excluding N)
+ * @param  {function} fn   function to apply
+ * @param {int} N number of times to apply function (default to this.N)
+ * @param  {array}   args optional arguments to pass to the function
+ * @return {array}        outputs
+ */
+ThreadArcs.prototype.doN = function(fn, N, args) {
+	args || (args = [])
+	N || (N = this.N)
+	args.unshift(undefined)
+
+	var result = []
+	for(i=0; i< N; i++) {
+		args[0] = i
+		result.push(fn.apply(this, args))
+	}
+	return result
+}
+
 
 /** 
  * EXTEND RAPHAEL
@@ -465,83 +693,6 @@ Raphael.el.removeClass = function(className) {
 };
 
 
-/**
- * GENERAL FUNCTIONS
- */
-
-
-/**
- * Revert the direction of the graph described by the invConnList
- * @param  {array} connList connection list
- * @return {array}          inverted connection list
- */
-function invertConnList(connList){
-	N = connList.length;
-	invConnList = []
-	for(i=0; i<N; i++) {
-		invConnList.push([])
-	}
-
-	connList.forEach(function(connections, i){
-		connections.forEach(function(j){
-			invConnList[Math.abs(j)].push(i)
-		}) 
-	})
-
-	return invConnList
-}
-
-
-/**
- * Recursively determines the depth of all ancestors of a given node
- * in a directed acylic graph. The graph should be described by an
- * inverted connection list L. That means that L[i] is a list of all
- * _parent_ nodes of i.
- * @param  {int} i         	   starting node
- * @param  {array} depths      array of depths will be updated 
- * @param  {array} invConnList inverted connection list
- * @return {array}             array of updated weights
- */
-function getPredecessorsDepths(i, depths, invConnList){
-	// Only enter recursion if necessary
-	if(depths.indexOf(i) == -1) {
-		var parentDepths = []
-		invConnList[i].forEach(function(j){
-			depths = getPredecessorsDepths(j, depths, invConnList)
-			parentDepths.push(depths[j])
-		})
-		if(parentDepths.length == 0) {
-			depths[i] = 0
-		} else {
-			depths[i] = Math.min.apply(null, parentDepths) + 1 
-		}
-	}
-	return depths
-}
-
-/**
- * Determines the depth of all points in a directed acyclic graph
- * described by a connection list L. Here L[i] is an inverted list 
- * with the indices of all parents.
- * It returns a list D of depths (i.e. D[i] is the depth of node i)
- * @param  {array} connList connection list
- * @return {array}          depths
- */
-function getDepths(invConnList) {
-	// var invConnList = invertConnList(connList)
-	var depths = []
-	for(i=0; i<invConnList.length; i++) { 
-		depths.push(undefined)
-	}
-
-	while( depths.indexOf(undefined) != -1 ) {
-		i = depths.indexOf(undefined)
-		depths = getPredecessorsDepths(i, depths, invConnList)
-	}
-	return depths
-}
-
-
 function repeat(object, N) {
 	var repeated = []
 	for(i=0; i<N; i++){
@@ -550,14 +701,3 @@ function repeat(object, N) {
 	return repeated
 }
 
-
-//http://stackoverflow.com/questions/3895478/does-javascript-have-a-method-like-range-to-generate-an-array-based-on-suppl
-var range = function(start, stop, step) {
-	start || (start = 0)
-    var a = [start];
-    while (start < stop) {
-        start += step || 1;
-        a.push(start);
-    }
-    return a;
-};
