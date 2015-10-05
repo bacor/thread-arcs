@@ -13,22 +13,22 @@
  * @param {array} connList [list of lists: for every node, the indices of the nodes it links to]
  * @param {array} options
  */
-var ThreadArcs = function(container, nodes, connList, options)  {
+var ThreadArcs = function(container, invConnList, options)  {
 	options || (options={})
 	
 	// Fix binding
 	if (!(this instanceof ThreadArcs)) {
-		return new ThreadArcs(container, nodes, connList, options);
+		return new ThreadArcs(container, invConnList, options);
 		
 	} else {
 		this.container 		 = container
-		this.nodes			 = nodes
-	    this.connList 		 = connList
-	    this.invConnList 	 = this.invertConnList(connList)
+	    this.invConnList 	 = invConnList
+	    this.connList 	 	 = this.invertConnList(invConnList)
+	    this.N 				 = this.invConnList.length
+	    this.nodes           = (options['nodes'] || this.range(this.N-1))
+		this.nodeIndices     = this.range(this.N-1)
 		this.points			 = []
-		this.N 				 = nodes.length
 		this.arcs 			 = []
-		this.nodeIndices     = this.range(0,this.N-1)
 		this.active 		 = []
 
 		this.space			 = (options['space'] || 40)
@@ -169,9 +169,6 @@ ThreadArcs.prototype.drawPoint = function(pos) {
 			clearTimeout(this.activeTimeout) 
 			this.resetHighlighting()	
 		}
-		console.log(this.nodeIndices)
-		console.log(p)
-		console.log(this.points.indexOf(p))
 		this.highlight(this.points.indexOf(p))
 		this.showTooltip(this.points.indexOf(p))
 		
@@ -367,10 +364,8 @@ ThreadArcs.prototype.sort = function(method) {
 	// Update class variables and return
 	// Also store a 'translation' (nodeIndices)
 	//  so that we can access nodes by their original ids
-	console.log(this.nodes)
 	this.nodeIndices 	= sortedNodesIndices
 	this.nodes 			= sortedNodes
-	console.log(this.nodes)
 	this.connList 		= sortedConnList
 	this.depths 		= this.getDepths(this.invConnList)
 	return this
@@ -547,6 +542,8 @@ ThreadArcs.prototype.getTooltip = function() {
 		tooltip.onmouseleave = function() {
 			this.hideTooltip()
 			this.resetHighlighting()
+			var i = parseInt(this.tooltip.getAttribute('data-index'))
+			this.deactivate(i)
 		}.bind(this)
 
 		this.tooltip = tooltip;
@@ -600,7 +597,6 @@ ThreadArcs.prototype.showTooltip = function(i) {
 	return this
 }
 
-
 /**
  * Hides the tooltip
  * @return {object} this
@@ -623,6 +619,8 @@ ThreadArcs.prototype.hideTooltip = function() {
 
 	}.bind(this), 600)
 
+//	this.showActive()
+	
 	return this
 }
 
