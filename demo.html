@@ -17,7 +17,17 @@
             {'title': 'Democratische wetenschap is realistische wetenschap', 'author': 'Trudy Dehue', 'date': 5, 'href':'#'}
         ]
 
-        invConnList = [
+        tooltipHTML = function(node) {
+            return '<a href="' + node['href'] + '" title="' + node['title'] + '">'
+                    +'<span class="inline-author">' + node['author'] + '.</span> '
+                    + '<span class="title">' + node['title'] + '</span>'
+               +'</a>';
+        }
+
+        // List of parents of every note.
+        // j in parents[i] means that j --> i, 
+        // which means that i is reply to article j
+        parents = [
             [],
             [0],
             [1],
@@ -27,18 +37,16 @@
 
         options = {
             'nodes': nodes,
-            'maxArcHeight': 60,
-            'space': 25,
-            'lambda': 2 / 3,
-            'orientation': 'horizontal'
+            'tooltipHTML': tooltipHTML,
+            'orientation': 'vertical'
         }
 
-        TA = ThreadArcs('canvas_container', invConnList, options)
+        TA = ThreadArcs('canvas_container', parents, options)
         TA.sort(1)
         TA.draw()
         TA.activate(2)
 
-        TA2 = ThreadArcs('canvas_container2', invConnList, options)
+        TA2 = ThreadArcs('canvas_container2', parents, (options['orientation']='horizontal'))
         TA2.sort(2).draw()
 
         // TA3 = ThreadArcs('canvas_container3', articles, connList, options)
