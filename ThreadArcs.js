@@ -107,7 +107,6 @@ var ThreadArcs = function(container, parents, options)  {
 	}
 }
 
-
 /**
  * Revert the direction of the graph described by the connection list
  * @param  {array} connList connection list
@@ -190,7 +189,6 @@ ThreadArcs.prototype.getDepths = function(refresh, parents) {
 	return depths
 }
 
-
 /**
  * Get coordinates from a position
  * @param  {float} pos position
@@ -230,7 +228,7 @@ ThreadArcs.prototype.drawPoint = function(pos) {
 		
 	}.bind(this), function(){
 		this.resetHighlighting();
-		this.activeTimeout = setTimeout(this.showActive.bind(this), 300);
+		this.activeTimeout = setTimeout(this.showActive.bind(this), 500);
 		this.hideTooltip();
 	}.bind(this));
 	
@@ -300,10 +298,17 @@ ThreadArcs.prototype.drawArc = function(i, j, dir) {
 
 /** 
  * Draws the entire ThreadArcs thing
+ * @param {boolean} clear Clear the paper? Default to true.
  * @return {objec} this (ThreadArcs object)
  */
-ThreadArcs.prototype.draw = function() {
-	
+ThreadArcs.prototype.draw = function(clear) {
+	// Clear paper
+	if(clear == undefined) {
+		this.paper.clear();
+		this.points = [];
+		this.arcs = [];
+	}
+
 	// Draw all nodes
 	for( i = 0; i < this.N; i++ ){
 		this.drawPoint(this.padding + i * this.space, this.nodes[i]);
@@ -323,6 +328,8 @@ ThreadArcs.prototype.draw = function() {
 		el.parentNode.appendChild(el);
 	}
 
+	this.showActive()
+
 	return this;
 }
 
@@ -334,20 +341,22 @@ ThreadArcs.prototype.draw = function() {
  * @return {[type]} [description]
  */
 ThreadArcs.prototype.getSortedNodes1 = function() {
-	
 	// Initializing
 	var indices = this.range(this.N - 1);
 	var num_children = this.children.map(function(i){ return i.length });
-	depths = this.getDepths()
+	var depths = this.getDepths();
 
-	// Sort and return
-	indices = indices.sort(function (i,j) {
-		return (depths[i] > depths[j])
-				|| (depths[i] == depths[j])
-		 		    && (num_children[i] < num_children[j]);
-	}.bind(this));
+	// Sort, using a numerical version of the condition
+	// (depths[i] > depths[j])
+	//    || (depths[i] == depths[j])
+	//  	  && (num_children[i] < num_children[j]);
+	var sortfn = function (i, j) { // checks if i > j
+		val_i = depths[i] * this.N + num_children[i]
+		val_j = depths[j] * this.N + num_children[j]
+		return val_i - val_j
+	}.bind(this)
 
-	return indices;
+	return indices.sort(sortfn);
 }
 
 /**
@@ -356,9 +365,8 @@ ThreadArcs.prototype.getSortedNodes1 = function() {
  * @return {array} ordered nodes
  */
 ThreadArcs.prototype.getSortedNodes2 = function() {
-
-	indices = [];
-	depths = this.getDepths()
+	var indices = [];
+	var depths = this.getDepths()
 	for(i=0; i<this.N; i++) {
 		if(depths[i] == 0){
 			indices.unshift(i);
@@ -386,38 +394,45 @@ ThreadArcs.prototype.getSortedNodes2 = function() {
  * @return {object} this this
  */
 ThreadArcs.prototype.sort = function(method) {
-	// Sort
-	// should return only the new indices, not the nodes themselves!
+	// Load SortedNodesIndices: a list with the old indices, 
+	// in the new order (e.g [1,0,3,2])
 	if(typeof(method) == 'object') {
-		var sortedNodesIndices = [];
-		nodes = this.nodes;
-		method.forEach(function(i){
-			sortedNodesIndices.push(nodes[i]);
-		})
-
-	} else if(method == 1) {
-		var sortedNodesIndices = this.getSortedNodes1();
-	} else {
+		var sortedNodesIndices = method;
+	} else if(method == 2) {
 		var sortedNodesIndices = this.getSortedNodes2();
+	} else {
+		var sortedNodesIndices = this.getSortedNodes1();
 	}	
 
 	// Sort the nodes
 	var sortedNodes = [];
 	sortedNodesIndices.forEach(function(i){
-		sortedNodes.push(this.nodes[i]);
+		sortedNodes.push(this.nodes[Math.abs(i)]);
 	}.bind(this));
 	
 	// Update connection list
-	sortedConnList = [];
-	depths = this.getDepths()
+	var sortedConnList = [];
+	var depths = this.getDepths();
+	var sortedDepths = [];
 	sortedNodesIndices.forEach(function(i){
-		connections = this.children[i];
+		connections = this.children[Math.abs(i)];
 		dir = (depths[Math.abs(i)] % 2 - .5) * (2);
 		connections = connections.map(function(j){
 			return dir * sortedNodesIndices.indexOf(Math.abs(j));
 		})
 		sortedConnList.push(connections);
+		sortedDepths.push(depths[Math.abs(i)]);
 	}.bind(this));
+
+	// Fix optional activation
+	if(this.active.length != 0) {
+		var newActive = [];
+		this.active.forEach(function(i){
+			newActive.push(sortedNodesIndices.indexOf(Math.abs(i)))
+		}.bind(this));
+		this.active = newActive;
+		this.showActive()
+	}
 
 	// Update class variables and return
 	// Also store a 'translation' (nodeIndices)
@@ -425,9 +440,7 @@ ThreadArcs.prototype.sort = function(method) {
 	this.nodeIndices 	= sortedNodesIndices;
 	this.nodes 			= sortedNodes;
 	this.children 		= sortedConnList;
-
-	// To do: just reorder list saves computations
-	this.depths 		= this.getDepths(true);
+	this.depths 		= sortedDepths;
 	return this;
 }
 
@@ -526,10 +539,11 @@ ThreadArcs.prototype.resetHighlighting = function(){
 ThreadArcs.prototype.activate = function(i) {
 	this.points[i].addClass('active')
 	this.highlight(i)
-
-	if(this.active.indexOf(i) == -1) {
-		this.active.push(i)
-	}
+	this.active = [i]
+	// To do: support multiple active points?
+	// if(this.active.indexOf(i) == -1) {
+	// 	this.active.push(i)
+	// }
 	return this
 }
 
@@ -541,7 +555,6 @@ ThreadArcs.prototype.activate = function(i) {
  */
 ThreadArcs.prototype.deactivate = function(i) {
 	this.points[i].removeClass('active');
-
 	// Remove from active elements
 	var index = this.active.indexOf(i);
 	if (index > -1) {
@@ -595,15 +608,15 @@ ThreadArcs.prototype.getTooltip = function() {
 			clearTimeout(this.tooltipTimeout);
 			clearTimeout(this.tooltipTimeout2);
 			clearTimeout(this.activeTimeout);
+			this.resetHighlighting();
 			var i = parseInt(this.tooltip.getAttribute('data-index'));
-			this.activate(i);
+			this.highlight(i);
 		}.bind(this);
 
 		tooltip.onmouseleave = function() {
 			this.hideTooltip();
 			this.resetHighlighting();
-			var i = parseInt(this.tooltip.getAttribute('data-index'));
-			this.deactivate(i);
+			this.activeTimeout = setTimeout(this.showActive.bind(this), 450);
 		}.bind(this);
 	}
 
@@ -670,9 +683,9 @@ ThreadArcs.prototype.hideTooltip = function() {
 
 		this.tooltipTimeout2 = setTimeout(function() {
 			this.addClass(this.tooltip, 'hidden');
-		}.bind(this), 600);
+		}.bind(this), 450);
 
-	}.bind(this), 600);
+	}.bind(this), 450);
 	
 	return this;
 }
@@ -792,3 +805,15 @@ ThreadArcs.prototype.doN = function(fn, N, args) {
 	return result;
 }
 
+/**
+ * Math.sign, compatibility for old browsers
+ * @param  {float} x number
+ * @return {int}   1 if positive, -1 if negative
+ */
+Math.sign = Math.sign || function(x) {
+  x = +x; // convert to a number
+  if (x === 0 || isNaN(x)) {
+    return x;
+  }
+  return x > 0 ? 1 : -1;
+}
