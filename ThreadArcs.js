@@ -130,9 +130,9 @@ ThreadArcs.prototype.invertConnList = function(connList){
 
 /**
  * Recursively determines the depth of all ancestors of a given node
- * in a directed acylic graph. The graph should be described by an
- * inverted connection list L. That means that L[i] is a list of all
- * _parent_ nodes of i.
+ * in a directed acylic graph. The graph should be described by a
+ * connection list of parents per node. That means that L[i] is a list 
+ * of all _parent_ nodes of i.
  * @param  {int} i 				starting node
  * @param  {array} depths 		array of depths will be updated 
  * @param  {array} parents 	 	list of parents per point
@@ -163,8 +163,8 @@ ThreadArcs.prototype.getPredecessorsDepths = function(i, depths, parents, counte
 
 /**
  * Determines the depth of all points in a directed acyclic graph
- * described by a connection list L. Here L[i] is an inverted list 
- * with the indices of all parents.
+ * described by a connection list L oof parent nodes. That means
+ * that L[i] is a list with the indices of all parents of i.
  * It returns a list D of depths (i.e. D[i] is the depth of node i)
  * @param  {array} children connection list
  * @return {array}          depths
